@@ -36,3 +36,16 @@ Thumbs.db
 htmlcov/
 .coverage
 .coverage.*
+
+# Expo / React Native
+.expo/
+node_modules/
+gomatch-app/node_modules/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+dist/
