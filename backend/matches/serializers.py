@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from matches.models import Match, MatchParticipant, OpenMatch
+from scoring.serializers import ScoreSerializer
 
 
 class MatchParticipantSerializer(serializers.ModelSerializer):
@@ -66,6 +67,7 @@ class MatchDetailSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     current_participants_count = serializers.SerializerMethodField()
     participants = MatchParticipantSerializer(many=True, read_only=True)
+    score = ScoreSerializer(read_only=True)
 
     class Meta:
         model = Match
@@ -82,6 +84,7 @@ class MatchDetailSerializer(serializers.ModelSerializer):
             "max_participants",
             "current_participants_count",
             "participants",
+            "score",
             "created_at",
             "updated_at",
         ]

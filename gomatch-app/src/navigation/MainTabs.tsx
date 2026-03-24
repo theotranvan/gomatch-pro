@@ -2,10 +2,10 @@ import React from "react";
 import { View, StyleSheet } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { HomeScreen } from "../screens/main/HomeScreen";
-import { OpenMatchesScreen } from "../screens/main/OpenMatchesScreen";
+import { HomeStack } from "./HomeStack";
+import { OpenMatchesStack } from "./OpenMatchesStack";
 import { CreateMatchScreen } from "../screens/main/CreateMatchScreen";
-import { ChatListScreen } from "../screens/main/ChatListScreen";
+import { VenuesStack } from "./VenuesStack";
 import { ProfileStack } from "./ProfileStack";
 import { Colors } from "../constants/colors";
 
@@ -13,7 +13,7 @@ export type MainTabParamList = {
   Home: undefined;
   OpenMatches: undefined;
   CreateMatch: undefined;
-  ChatList: undefined;
+  Venues: undefined;
   Profile: undefined;
 };
 
@@ -42,9 +42,10 @@ export function MainTabs() {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        component={HomeStack}
         options={{
           title: "Accueil",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -52,9 +53,10 @@ export function MainTabs() {
       />
       <Tab.Screen
         name="OpenMatches"
-        component={OpenMatchesScreen}
+        component={OpenMatchesStack}
         options={{
           title: "Open Matchs",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="search-outline" size={size} color={color} />
           ),
@@ -77,12 +79,13 @@ export function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="ChatList"
-        component={ChatListScreen}
+        name="Venues"
+        component={VenuesStack}
         options={{
-          title: "Messages",
+          title: "Clubs",
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-outline" size={size} color={color} />
+            <Ionicons name="business-outline" size={size} color={color} />
           ),
         }}
       />

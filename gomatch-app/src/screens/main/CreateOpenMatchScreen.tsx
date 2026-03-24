@@ -14,8 +14,11 @@ import {
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/colors";
-import { matchesService, CreateMatchData } from "../../services/matches";
-import type { Sport, MatchType, PlayMode } from "../../types";
+import {
+  openMatchesService,
+  CreateOpenMatchData,
+} from "../../services/openMatches";
+import type { Sport, MatchType, PlayMode, SkillLevel } from "../../types";
 
 type OptionItem<T> = { value: T; label: string; icon?: string };
 
@@ -34,7 +37,14 @@ const MODES: OptionItem<PlayMode>[] = [
   { value: "competitive", label: "Compétition" },
 ];
 
-export function CreateMatchScreen() {
+const LEVELS: OptionItem<SkillLevel | "none">[] = [
+  { value: "none", label: "Aucun" },
+  { value: "beginner", label: "Débutant" },
+  { value: "intermediate", label: "Inter." },
+  { value: "advanced", label: "Avancé" },
+];
+
+export function CreateOpenMatchScreen() {
   const navigation = useNavigation<any>();
 
   const [sport, setSport] = useState<Sport | null>(null);
@@ -45,6 +55,12 @@ export function CreateMatchScreen() {
   const [year, setYear] = useState("");
   const [hour, setHour] = useState("");
   const [minute, setMinute] = useState("");
+  const [levelMin, setLevelMin] = useState<SkillLevel | "none">("none");
+  const [levelMax, setLevelMax] = useState<SkillLevel | "none">("none");
+  const [description, setDescription] = useState("");
+  const [expDay, setExpDay] = useState("");
+  const [expMonth, setExpMonth] = useState("");
+  const [expYear, setExpYear] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,12 +72,9 @@ export function CreateMatchScreen() {
     const d = parseInt(day, 10);
     const m = parseInt(month, 10);
     const y = parseInt(year, 10);
-    if (!day || !month || !year || isNaN(d) || isNaN(m) || isNaN(y)) {
+    if (!day || !month || !year || isNaN(d) || isNaN(m) || isNaN(y))
       return "Date invalide";
-    }
-    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 2025) {
-      return "Date invalide";
-    }
+    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 2025) return "Date invalide";
     const date = new Date(y, m - 1, d);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -71,6 +84,18 @@ export function CreateMatchScreen() {
     const min = parseInt(minute, 10);
     if (!hour || isNaN(h) || h < 0 || h > 23) return "Heure invalide";
     if (!minute || isNaN(min) || min < 0 || min > 59) return "Minutes invalides";
+
+    if (expDay || expMonth || expYear) {
+      const ed = parseInt(expDay, 10);
+      const em = parseInt(expMonth, 10);
+      const ey = parseInt(expYear, 10);
+      if (isNaN(ed) || isNaN(em) || isNaN(ey)) return "Date d'expiration invalide";
+      if (ed < 1 || ed > 31 || em < 1 || em > 12 || ey < 2025)
+        return "Date d'expiration invalide";
+      const expDate = new Date(ey, em - 1, ed);
+      if (expDate >= date) return "L'expiration doit être avant la date du match";
+      if (expDate < today) return "L'expiration ne peut pas être dans le passé";
+    }
 
     return null;
   };
@@ -88,7 +113,7 @@ export function CreateMatchScreen() {
     const scheduledDate = `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
     const scheduledTime = `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}:00`;
 
-    const data: CreateMatchData = {
+    const data: CreateOpenMatchData = {
       sport: sport!,
       match_type: matchType!,
       play_mode: playMode!,
@@ -97,23 +122,24 @@ export function CreateMatchScreen() {
       max_participants: matchType === "doubles" ? 4 : 2,
     };
 
+    if (levelMin !== "none") data.required_level_min = levelMin;
+    if (levelMax !== "none") data.required_level_max = levelMax;
+    if (description.trim()) data.description = description.trim();
+
+    if (expDay && expMonth && expYear) {
+      data.expires_at = `${expYear.padStart(4, "0")}-${expMonth.padStart(2, "0")}-${expDay.padStart(2, "0")}T00:00:00Z`;
+    }
+
     try {
-      const match = await matchesService.createMatch(data);
-      Alert.alert("Match créé !", "Ton match a bien été créé.", [
-        {
-          text: "Voir le match",
-          onPress: () =>
-            navigation.navigate("Home", {
-              screen: "MatchDetail",
-              params: { matchId: match.id },
-            }),
-        },
+      await openMatchesService.createOpenMatch(data);
+      Alert.alert("Session publiée !", "Ta session ouverte est visible.", [
+        { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (err: any) {
       const msg =
         err?.response?.data?.detail ||
         err?.response?.data?.message ||
-        "Erreur lors de la création du match";
+        "Erreur lors de la publication";
       setError(typeof msg === "string" ? msg : JSON.stringify(msg));
     } finally {
       setLoading(false);
@@ -141,10 +167,7 @@ export function CreateMatchScreen() {
             >
               {item.icon && <Text style={styles.pickerIcon}>{item.icon}</Text>}
               <Text
-                style={[
-                  styles.pickerLabel,
-                  active && styles.pickerLabelActive,
-                ]}
+                style={[styles.pickerLabel, active && styles.pickerLabelActive]}
               >
                 {item.label}
               </Text>
@@ -165,19 +188,19 @@ export function CreateMatchScreen() {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Sport ─────────────────────── */}
+        {/* ── Sport ── */}
         <Text style={styles.sectionTitle}>Sport</Text>
         {renderPicker(SPORTS, sport, setSport)}
 
-        {/* ── Type ──────────────────────── */}
+        {/* ── Type ── */}
         <Text style={styles.sectionTitle}>Type de match</Text>
         {renderPicker(TYPES, matchType, setMatchType)}
 
-        {/* ── Mode ──────────────────────── */}
+        {/* ── Mode ── */}
         <Text style={styles.sectionTitle}>Mode de jeu</Text>
         {renderPicker(MODES, playMode, setPlayMode)}
 
-        {/* ── Date ──────────────────────── */}
+        {/* ── Date ── */}
         <Text style={styles.sectionTitle}>Date</Text>
         <View style={styles.dateRow}>
           <View style={styles.dateField}>
@@ -198,7 +221,9 @@ export function CreateMatchScreen() {
             <TextInput
               style={styles.dateInput}
               value={month}
-              onChangeText={(t) => setMonth(t.replace(/[^0-9]/g, "").slice(0, 2))}
+              onChangeText={(t) =>
+                setMonth(t.replace(/[^0-9]/g, "").slice(0, 2))
+              }
               keyboardType="number-pad"
               placeholder="MM"
               placeholderTextColor={Colors.TEXT_SECONDARY}
@@ -211,7 +236,9 @@ export function CreateMatchScreen() {
             <TextInput
               style={styles.dateInput}
               value={year}
-              onChangeText={(t) => setYear(t.replace(/[^0-9]/g, "").slice(0, 4))}
+              onChangeText={(t) =>
+                setYear(t.replace(/[^0-9]/g, "").slice(0, 4))
+              }
               keyboardType="number-pad"
               placeholder="AAAA"
               placeholderTextColor={Colors.TEXT_SECONDARY}
@@ -220,7 +247,7 @@ export function CreateMatchScreen() {
           </View>
         </View>
 
-        {/* ── Heure ─────────────────────── */}
+        {/* ── Heure ── */}
         <Text style={styles.sectionTitle}>Heure</Text>
         <View style={styles.dateRow}>
           <View style={styles.dateField}>
@@ -228,7 +255,9 @@ export function CreateMatchScreen() {
             <TextInput
               style={styles.dateInput}
               value={hour}
-              onChangeText={(t) => setHour(t.replace(/[^0-9]/g, "").slice(0, 2))}
+              onChangeText={(t) =>
+                setHour(t.replace(/[^0-9]/g, "").slice(0, 2))
+              }
               keyboardType="number-pad"
               placeholder="HH"
               placeholderTextColor={Colors.TEXT_SECONDARY}
@@ -241,7 +270,9 @@ export function CreateMatchScreen() {
             <TextInput
               style={styles.dateInput}
               value={minute}
-              onChangeText={(t) => setMinute(t.replace(/[^0-9]/g, "").slice(0, 2))}
+              onChangeText={(t) =>
+                setMinute(t.replace(/[^0-9]/g, "").slice(0, 2))
+              }
               keyboardType="number-pad"
               placeholder="MM"
               placeholderTextColor={Colors.TEXT_SECONDARY}
@@ -250,7 +281,81 @@ export function CreateMatchScreen() {
           </View>
         </View>
 
-        {/* ── Error ─────────────────────── */}
+        {/* ── Niveau minimum ── */}
+        <Text style={styles.sectionTitle}>Niveau minimum (optionnel)</Text>
+        {renderPicker(LEVELS, levelMin, setLevelMin)}
+
+        {/* ── Niveau maximum ── */}
+        <Text style={styles.sectionTitle}>Niveau maximum (optionnel)</Text>
+        {renderPicker(LEVELS, levelMax, setLevelMax)}
+
+        {/* ── Description ── */}
+        <Text style={styles.sectionTitle}>Description (optionnel)</Text>
+        <TextInput
+          style={styles.textArea}
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Ex: match détendu entre amis"
+          placeholderTextColor={Colors.TEXT_SECONDARY}
+          multiline
+          numberOfLines={3}
+          maxLength={250}
+          textAlignVertical="top"
+        />
+
+        {/* ── Date d'expiration ── */}
+        <Text style={styles.sectionTitle}>Expiration (optionnel)</Text>
+        <Text style={styles.hint}>
+          Par défaut : 24h avant le match
+        </Text>
+        <View style={styles.dateRow}>
+          <View style={styles.dateField}>
+            <Text style={styles.dateLabel}>Jour</Text>
+            <TextInput
+              style={styles.dateInput}
+              value={expDay}
+              onChangeText={(t) =>
+                setExpDay(t.replace(/[^0-9]/g, "").slice(0, 2))
+              }
+              keyboardType="number-pad"
+              placeholder="JJ"
+              placeholderTextColor={Colors.TEXT_SECONDARY}
+              maxLength={2}
+            />
+          </View>
+          <Text style={styles.dateSep}>/</Text>
+          <View style={styles.dateField}>
+            <Text style={styles.dateLabel}>Mois</Text>
+            <TextInput
+              style={styles.dateInput}
+              value={expMonth}
+              onChangeText={(t) =>
+                setExpMonth(t.replace(/[^0-9]/g, "").slice(0, 2))
+              }
+              keyboardType="number-pad"
+              placeholder="MM"
+              placeholderTextColor={Colors.TEXT_SECONDARY}
+              maxLength={2}
+            />
+          </View>
+          <Text style={styles.dateSep}>/</Text>
+          <View style={styles.dateField}>
+            <Text style={styles.dateLabel}>Année</Text>
+            <TextInput
+              style={styles.dateInput}
+              value={expYear}
+              onChangeText={(t) =>
+                setExpYear(t.replace(/[^0-9]/g, "").slice(0, 4))
+              }
+              keyboardType="number-pad"
+              placeholder="AAAA"
+              placeholderTextColor={Colors.TEXT_SECONDARY}
+              maxLength={4}
+            />
+          </View>
+        </View>
+
+        {/* ── Error ── */}
         {error && (
           <View style={styles.errorBox}>
             <Ionicons name="alert-circle" size={18} color={Colors.ERROR} />
@@ -258,7 +363,7 @@ export function CreateMatchScreen() {
           </View>
         )}
 
-        {/* ── Submit ────────────────────── */}
+        {/* ── Submit ── */}
         <TouchableOpacity
           style={[
             styles.createBtn,
@@ -272,8 +377,8 @@ export function CreateMatchScreen() {
             <ActivityIndicator color="#FFFFFF" />
           ) : (
             <>
-              <Ionicons name="add-circle-outline" size={22} color="#FFFFFF" />
-              <Text style={styles.createBtnText}>Créer le match</Text>
+              <Ionicons name="megaphone-outline" size={22} color="#FFFFFF" />
+              <Text style={styles.createBtnText}>Publier la session</Text>
             </>
           )}
         </TouchableOpacity>
@@ -293,7 +398,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // ── Section ──────────
+  // ── Section ──
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
@@ -302,7 +407,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
 
-  // ── Picker buttons ───
+  // ── Picker buttons ──
   pickerRow: {
     flexDirection: "row",
     gap: 12,
@@ -368,7 +473,28 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
 
-  // ── Error ──────────
+  // ── TextArea ──
+  textArea: {
+    borderWidth: 1.5,
+    borderColor: Colors.BORDER,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    color: Colors.TEXT,
+    backgroundColor: "#FAFAFA",
+    minHeight: 80,
+  },
+
+  // ── Hint ──
+  hint: {
+    fontSize: 12,
+    color: Colors.TEXT_SECONDARY,
+    marginBottom: 8,
+    fontStyle: "italic",
+  },
+
+  // ── Error ──
   errorBox: {
     flexDirection: "row",
     alignItems: "center",

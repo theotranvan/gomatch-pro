@@ -92,6 +92,7 @@ export interface Match {
   max_participants: number;
   current_participants_count: number;
   participants: MatchParticipant[];
+  score: Score | null;
   created_at: string;
   updated_at: string;
 }
