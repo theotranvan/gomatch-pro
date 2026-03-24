@@ -1,3 +1,5 @@
+from django.db.models import Window, F
+from django.db.models.functions import RowNumber
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -106,6 +108,12 @@ class RankingListView(generics.ListAPIView):
     def get_queryset(self):
         return Ranking.objects.select_related(
             "player", "player__user"
+        ).annotate(
+            computed_rank=Window(
+                expression=RowNumber(),
+                partition_by=[F("sport")],
+                order_by=F("points").desc(),
+            )
         ).order_by("-points")
 
 
@@ -120,8 +128,18 @@ class MyRankingsView(APIView):
         responses=RankingSerializer(many=True),
     )
     def get(self, request):
-        rankings = Ranking.objects.filter(
-            player=request.user.profile,
-        ).order_by("sport")
+        rankings = list(
+            Ranking.objects.filter(
+                player=request.user.profile,
+            ).select_related("player", "player__user").order_by("sport")
+        )
+        for ranking in rankings:
+            ranking.computed_rank = (
+                Ranking.objects.filter(
+                    sport=ranking.sport,
+                    points__gt=ranking.points,
+                ).count()
+                + 1
+            )
         serializer = RankingSerializer(rankings, many=True)
         return Response(serializer.data)

@@ -93,10 +93,10 @@ export function MatchDetailScreen() {
     !isFull &&
     (match.status === "open" || match.status === "confirmed");
 
-  // Can submit score if participant and match is completed and no score yet
+  // Can submit score if participant and match is in_progress or completed and no score yet
   const canSubmitScore =
     isParticipant &&
-    match?.status === "completed" &&
+    (match?.status === "in_progress" || match?.status === "completed") &&
     !score;
 
   // Can confirm/dispute if score is pending and I'm a participant but NOT the submitter
@@ -282,7 +282,29 @@ export function MatchDetailScreen() {
         {canSubmitScore && (
           <TouchableOpacity
             style={styles.primaryBtn}
-            onPress={() => navigation.navigate("SubmitScore", { matchId: match.id })}
+            onPress={() => {
+              const teamA = match.participants
+                .filter((p) => p.team === "team_a" && p.status === "accepted")
+                .map((p) => p.player_name.split(" ")[0])
+                .join(", ") || match.participants
+                .filter((p) => p.status === "accepted")
+                .slice(0, Math.ceil(match.max_participants / 2))
+                .map((p) => p.player_name.split(" ")[0])
+                .join(", ");
+              const teamB = match.participants
+                .filter((p) => p.team === "team_b" && p.status === "accepted")
+                .map((p) => p.player_name.split(" ")[0])
+                .join(", ") || match.participants
+                .filter((p) => p.status === "accepted")
+                .slice(Math.ceil(match.max_participants / 2))
+                .map((p) => p.player_name.split(" ")[0])
+                .join(", ");
+              navigation.navigate("SubmitScore", {
+                matchId: match.id,
+                teamANames: teamA || undefined,
+                teamBNames: teamB || undefined,
+              });
+            }}
             activeOpacity={0.8}
           >
             <Ionicons name="create-outline" size={20} color="#FFF" />
@@ -401,11 +423,32 @@ function ScoreSection({ score }: { score: Score }) {
       <View style={styles.scoreCard}>
         <View style={styles.scoreStatusRow}>
           <View style={[styles.scoreStatusBadge, { backgroundColor: scoreCfg.color + "18" }]}>
+            <Ionicons
+              name={
+                score.status === "confirmed"
+                  ? "checkmark-circle"
+                  : score.status === "disputed"
+                    ? "alert-circle"
+                    : "time-outline"
+              }
+              size={14}
+              color={scoreCfg.color}
+              style={{ marginRight: 4 }}
+            />
             <Text style={[styles.scoreStatusText, { color: scoreCfg.color }]}>
               {scoreCfg.label}
             </Text>
           </View>
         </View>
+
+        {score.status === "disputed" && (
+          <View style={styles.disputeNotice}>
+            <Ionicons name="warning-outline" size={16} color={Colors.ERROR} />
+            <Text style={styles.disputeText}>
+              Score contesté, en attente de résolution
+            </Text>
+          </View>
+        )}
 
         {/* Sets */}
         <View style={styles.setsContainer}>
@@ -608,6 +651,8 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   scoreStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
@@ -617,6 +662,21 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   setsContainer: {},
+  disputeNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.ERROR + "10",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+  },
+  disputeText: {
+    fontSize: 13,
+    color: Colors.ERROR,
+    fontWeight: "500",
+    flex: 1,
+  },
   setsHeader: {
     flexDirection: "row",
     paddingBottom: 8,

@@ -6,6 +6,7 @@ import { HomeStack } from "./HomeStack";
 import { OpenMatchesStack } from "./OpenMatchesStack";
 import { CreateMatchScreen } from "../screens/main/CreateMatchScreen";
 import { VenuesStack } from "./VenuesStack";
+import { ChatStack } from "./ChatStack";
 import { ProfileStack } from "./ProfileStack";
 import { Colors } from "../constants/colors";
 
@@ -13,6 +14,7 @@ export type MainTabParamList = {
   Home: undefined;
   OpenMatches: undefined;
   CreateMatch: undefined;
+  Chat: undefined;
   Venues: undefined;
   Profile: undefined;
 };
@@ -76,6 +78,17 @@ export function MainTabs() {
             </View>
           ),
           tabBarLabel: () => null,
+        }}
+      />
+      <Tab.Screen
+        name="Chat"
+        component={ChatStack}
+        options={{
+          title: "Messages",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubble-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen

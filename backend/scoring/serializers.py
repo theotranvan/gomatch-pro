@@ -50,6 +50,7 @@ class RankingSerializer(serializers.ModelSerializer):
     """Read serializer for Ranking."""
 
     player_name = serializers.SerializerMethodField()
+    rank_position = serializers.SerializerMethodField()
 
     class Meta:
         model = Ranking
@@ -66,6 +67,9 @@ class RankingSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = fields
+
+    def get_rank_position(self, obj):
+        return getattr(obj, "computed_rank", obj.rank_position)
 
     def get_player_name(self, obj):
         profile = obj.player

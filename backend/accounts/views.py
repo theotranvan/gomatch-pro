@@ -156,3 +156,15 @@ class PlayerListView(generics.ListAPIView):
         return PlayerProfile.objects.select_related("user").order_by(
             "last_name", "first_name"
         )
+
+
+@extend_schema(tags=["Players"])
+class PlayerDetailView(generics.RetrieveAPIView):
+    """
+    GET /api/players/:id/
+    Retrieve a single player profile by ID.
+    """
+
+    serializer_class = PlayerProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = PlayerProfile.objects.select_related("user")

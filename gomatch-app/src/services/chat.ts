@@ -3,8 +3,8 @@ import type { ChatRoom, ChatMessage, PaginatedResponse } from "../types";
 
 export const chatService = {
   async getChatRooms(): Promise<ChatRoom[]> {
-    const { data } = await api.get<ChatRoom[]>("/chat/rooms/");
-    return data;
+    const { data } = await api.get<{ results: ChatRoom[] } | ChatRoom[]>("/chat/rooms/");
+    return Array.isArray(data) ? data : data.results;
   },
 
   async getMessages(roomId: string, page?: number): Promise<PaginatedResponse<ChatMessage>> {

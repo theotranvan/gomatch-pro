@@ -115,7 +115,7 @@ export function HomeScreen() {
     >
       {/* ── Header ── */}
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.greeting}>
             Bonjour, {profile?.first_name || "Joueur"} 👋
           </Text>
@@ -126,6 +126,13 @@ export function HomeScreen() {
             </View>
           ) : null}
         </View>
+        <TouchableOpacity
+          style={styles.searchButton}
+          onPress={() => navigation.navigate("PlayerSearch")}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons name="search" size={22} color={Colors.PRIMARY} />
+        </TouchableOpacity>
       </View>
 
       {/* ── Open Matches ── */}
@@ -227,9 +234,20 @@ const styles = StyleSheet.create({
   },
   // ── Header ──
   header: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
+  },
+  searchButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F0F0F0",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 12,
   },
   greeting: {
     fontSize: 24,

@@ -6,6 +6,7 @@ from accounts.views import (
     LoginView,
     MeView,
     PlayerListView,
+    PlayerDetailView,
     UpdateProfileView,
 )
 
@@ -24,4 +25,5 @@ urlpatterns = [
 # Player list — mounted separately in root urls.py
 player_urlpatterns = [
     path("", PlayerListView.as_view(), name="player-list"),
+    path("<uuid:pk>/", PlayerDetailView.as_view(), name="player-detail"),
 ]

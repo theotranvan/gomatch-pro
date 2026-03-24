@@ -1,6 +1,7 @@
 from django.urls import path
 
 from matches.views import (
+    MatchChangeStatusView,
     MatchCreateView,
     MatchDetailView,
     MatchJoinView,
@@ -21,6 +22,7 @@ urlpatterns = [
     path("my/", MyMatchesView.as_view(), name="my-matches"),
     path("<uuid:pk>/", MatchDetailView.as_view(), name="match-detail"),
     path("<uuid:pk>/join/", MatchJoinView.as_view(), name="match-join"),
+    path("<uuid:pk>/change-status/", MatchChangeStatusView.as_view(), name="match-change-status"),
     path("<uuid:match_id>/score/", SubmitScoreView.as_view(), name="submit-score"),
     # Open matches
     path("open/", OpenMatchListView.as_view(), name="open-match-list"),

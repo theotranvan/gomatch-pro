@@ -156,6 +156,45 @@ class MyMatchesView(generics.ListAPIView):
         ).order_by("-scheduled_date", "-scheduled_time")
 
 
+class MatchChangeStatusView(APIView):
+    """
+    POST /api/matches/:id/change-status/
+    Change match status (for testing / admin purposes).
+    Only the match creator or staff can change the status.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        tags=["Matches"],
+        summary="Change match status",
+    )
+    def post(self, request, pk):
+        new_status = request.data.get("status")
+        valid = [s.value for s in MatchStatus]
+        if new_status not in valid:
+            return Response(
+                {"detail": f"Invalid status. Choose from: {valid}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            match = Match.objects.get(pk=pk)
+        except Match.DoesNotExist:
+            return Response(
+                {"detail": "Match not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if match.created_by != request.user and not request.user.is_staff:
+            return Response(
+                {"detail": "Only the match creator or staff can change status."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        old = match.status
+        match.status = new_status
+        match.save(update_fields=["status", "updated_at"])
+        return Response({"old_status": old, "new_status": new_status})
+
+
 # ---------------------------------------------------------------------------
 # OpenMatch views
 # ---------------------------------------------------------------------------
