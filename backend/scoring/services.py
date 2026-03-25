@@ -2,9 +2,12 @@ from django.utils import timezone
 
 from core.enums import (
     MatchStatus,
+    MatchType,
     ParticipantStatus,
     PlayMode,
     ScoreStatus,
+    SportType,
+    TeamSide,
 )
 from matches.models import MatchParticipant
 from scoring.models import Ranking, Score
@@ -14,11 +17,8 @@ class ScoreService:
     """Service for score submission, confirmation, and dispute."""
 
     @staticmethod
-    def _validate_sets_format(sets_data):
-        """
-        Validate that sets_data is a non-empty list of
-        {"team_a": int >= 0, "team_b": int >= 0} dicts.
-        """
+    def _validate_sets_basic(sets_data):
+        """Validate basic structure: non-empty list of {team_a: int, team_b: int}."""
         if not isinstance(sets_data, list) or len(sets_data) == 0:
             raise ValueError("Sets must be a non-empty list.")
         for i, s in enumerate(sets_data):
@@ -32,18 +32,95 @@ class ScoreService:
                 raise ValueError(f"Set {i + 1} scores cannot be negative.")
 
     @staticmethod
+    def _validate_regular_set(score_a, score_b, set_num):
+        """Validate a regular tennis/padel set score."""
+        high = max(score_a, score_b)
+        low = min(score_a, score_b)
+        if high == 7 and low in (5, 6):
+            return
+        if high == 6 and 0 <= low <= 4:
+            return
+        raise ValueError(
+            f"Set {set_num} : score invalide ({score_a}-{score_b}). "
+            f"Scores valides : 6-0 à 6-4, 7-5, 7-6."
+        )
+
+    @staticmethod
+    def _validate_sets_for_tennis(sets_data):
+        """Validate tennis scoring: best of 3 sets, standard set rules."""
+        if len(sets_data) not in (2, 3):
+            raise ValueError("Un match de tennis se joue en 2 ou 3 sets.")
+        sets_a = 0
+        sets_b = 0
+        for i, s in enumerate(sets_data):
+            ScoreService._validate_regular_set(s["team_a"], s["team_b"], i + 1)
+            if s["team_a"] > s["team_b"]:
+                sets_a += 1
+            else:
+                sets_b += 1
+            # Match is over once someone reaches 2 sets
+            if sets_a == 2 or sets_b == 2:
+                if i < len(sets_data) - 1:
+                    raise ValueError(
+                        "Le match est terminé, il y a trop de sets."
+                    )
+        if sets_a != 2 and sets_b != 2:
+            raise ValueError(
+                "Le match doit avoir un gagnant (2 sets gagnants)."
+            )
+
+    @staticmethod
+    def _validate_sets_for_padel(sets_data):
+        """Validate padel scoring: 2 regular sets, optional super tie-break."""
+        if len(sets_data) not in (2, 3):
+            raise ValueError("Un match de padel se joue en 2 ou 3 sets.")
+        # Validate first two sets as regular sets
+        sets_a = 0
+        sets_b = 0
+        for i in range(min(2, len(sets_data))):
+            s = sets_data[i]
+            ScoreService._validate_regular_set(s["team_a"], s["team_b"], i + 1)
+            if s["team_a"] > s["team_b"]:
+                sets_a += 1
+            else:
+                sets_b += 1
+        # If 2-0, match is over
+        if sets_a == 2 or sets_b == 2:
+            if len(sets_data) != 2:
+                raise ValueError(
+                    "Le match est terminé en 2 sets, pas de 3ème set."
+                )
+            return
+        # 1-1: third set must be a super tie-break
+        if len(sets_data) != 3:
+            raise ValueError(
+                "À 1 set partout, un super tie-break est requis."
+            )
+        stb = sets_data[2]
+        high = max(stb["team_a"], stb["team_b"])
+        low = min(stb["team_a"], stb["team_b"])
+        if high < 10:
+            raise ValueError(
+                "Super tie-break : le gagnant doit atteindre au moins 10 points."
+            )
+        if high - low < 2:
+            raise ValueError(
+                "Super tie-break : 2 points d'écart minimum requis."
+            )
+
+    @staticmethod
     def submit_score(user, match_id, sets_data):
         """
         Submit a score for a match.
-        0. Validate sets format.
+        0. Validate sets structure and sport-specific rules.
         1. Verify the user is a participant of the match.
         2. Verify the match is COMPLETED or IN_PROGRESS.
         3. Verify no score already exists for this match.
         4. Determine the winner from set results.
         5. Create the Score in PENDING status.
         """
-        # 0. Validate sets format
-        ScoreService._validate_sets_format(sets_data)
+        # 0. Validate basic structure
+        ScoreService._validate_sets_basic(sets_data)
 
         from matches.models import Match
 
@@ -51,6 +128,12 @@ class ScoreService:
             match = Match.objects.get(pk=match_id)
         except Match.DoesNotExist:
             raise ValueError("Match not found.")
+
+        # 0b. Sport-specific validation
+        if match.sport == SportType.PADEL:
+            ScoreService._validate_sets_for_padel(sets_data)
+        else:
+            ScoreService._validate_sets_for_tennis(sets_data)
 
         # 1. Check participant
         if not MatchParticipant.objects.filter(
@@ -71,7 +154,9 @@ class ScoreService:
             raise ValueError("A score has already been submitted for this match.")
 
         # 4. Determine winner
-        winner_profile = ScoreService._determine_winner(match, sets_data)
+        winner_profile, winning_team = ScoreService._determine_winner(
+            match, sets_data
+        )
 
         # 5. Create score
         score = Score.objects.create(
@@ -79,6 +164,7 @@ class ScoreService:
             submitted_by=user,
             sets=sets_data,
             winner=winner_profile,
+            winning_team=winning_team,
             status=ScoreStatus.PENDING,
         )
         return score
@@ -166,8 +252,9 @@ class ScoreService:
     def _determine_winner(match, sets_data):
         """
         Determine the match winner based on sets won.
-        team_a = match creator, team_b = opponent.
-        Returns the PlayerProfile of the winner.
+        Returns (winner_profile, winning_team).
+        - Singles: winner_profile is set, winning_team is None.
+        - Doubles: winner_profile is None, winning_team is TEAM_A or TEAM_B.
         """
         team_a_sets = sum(
             1 for s in sets_data if s["team_a"] > s["team_b"]
@@ -176,6 +263,18 @@ class ScoreService:
             1 for s in sets_data if s["team_b"] > s["team_a"]
         )
 
+        if team_a_sets == team_b_sets:
+            return None, None
+
+        winning_side = (
+            TeamSide.TEAM_A if team_a_sets > team_b_sets else TeamSide.TEAM_B
+        )
+
+        # Doubles: return winning_team, no individual winner
+        if match.match_type == MatchType.DOUBLES:
+            return None, winning_side
+
+        # Singles: return winner profile
         participants = MatchParticipant.objects.filter(
             match=match,
             status=ParticipantStatus.ACCEPTED,
@@ -183,13 +282,12 @@ class ScoreService:
 
         players = list(participants)
         if len(players) < 2:
-            return None
+            return None, None
 
-        if team_a_sets > team_b_sets:
-            return players[0].player
-        elif team_b_sets > team_a_sets:
-            return players[1].player
-        return None
+        if winning_side == TeamSide.TEAM_A:
+            return players[0].player, None
+        else:
+            return players[1].player, None
 
 
 class RankingService:
@@ -199,10 +297,8 @@ class RankingService:
     def update_rankings(score):
         """
         Update rankings after a confirmed competitive match.
-        1. Get or create Ranking for each player in the sport.
-        2. +25 points for the winner, -15 for the loser.
-        3. +1 win / +1 loss.
-        4. Update last_match_at.
+        - Singles: +25 for winner, -15 for loser.
+        - Doubles: +25 for each player on winning team, -15 for losing team.
         """
         match = score.match
         sport = match.sport
@@ -219,7 +315,21 @@ class RankingService:
                 sport=sport,
             )
 
-            if score.winner and participant.player == score.winner:
+            is_winner = False
+            if match.match_type == MatchType.DOUBLES:
+                # Doubles: compare participant.team with winning_team
+                is_winner = (
+                    score.winning_team
+                    and participant.team == score.winning_team
+                )
+            else:
+                # Singles: compare with winner profile
+                is_winner = (
+                    score.winner
+                    and participant.player == score.winner
+                )
+
+            if is_winner:
                 ranking.points += 25
                 ranking.wins += 1
             else:

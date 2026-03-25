@@ -7,16 +7,26 @@ import { ScoreEntryScreen } from "../screens/main/ScoreEntryScreen";
 import { RankingScreen } from "../screens/main/RankingScreen";
 import { PlayerSearchScreen } from "../screens/main/PlayerSearchScreen";
 import { PlayerProfileScreen } from "../screens/main/PlayerProfileScreen";
+import { PaymentScreen } from "../screens/main/PaymentScreen";
 import { Colors } from "../constants/colors";
 
 export type HomeStackParamList = {
   HomeMain: undefined;
   MatchList: undefined;
   MatchDetail: { matchId: string };
-  SubmitScore: { matchId: string; teamANames?: string; teamBNames?: string };
+  SubmitScore: { matchId: string; sport: string; teamANames?: string; teamBNames?: string };
   Ranking: undefined;
   PlayerSearch: undefined;
   PlayerProfile: { playerId: string };
+  Payment: {
+    bookingId: string;
+    matchId: string;
+    courtName: string;
+    venueName: string;
+    date: string;
+    time: string;
+    pricePerPlayer: number;
+  };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -65,6 +75,11 @@ export function HomeStack() {
         name="PlayerProfile"
         component={PlayerProfileScreen}
         options={{ title: "Profil du joueur" }}
+      />
+      <Stack.Screen
+        name="Payment"
+        component={PaymentScreen}
+        options={{ title: "Paiement" }}
       />
     </Stack.Navigator>
   );

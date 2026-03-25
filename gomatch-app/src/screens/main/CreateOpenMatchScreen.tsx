@@ -50,6 +50,18 @@ export function CreateOpenMatchScreen() {
   const [sport, setSport] = useState<Sport | null>(null);
   const [matchType, setMatchType] = useState<MatchType | null>(null);
   const [playMode, setPlayMode] = useState<PlayMode | null>(null);
+
+  const isPadel = sport === "padel";
+  const availableTypes = isPadel
+    ? TYPES.filter((t) => t.value !== "singles")
+    : TYPES;
+
+  const handleSportChange = (s: Sport) => {
+    setSport(s);
+    if (s === "padel") {
+      setMatchType("doubles");
+    }
+  };
   const [day, setDay] = useState("");
   const [month, setMonth] = useState("");
   const [year, setYear] = useState("");
@@ -189,11 +201,16 @@ export function CreateOpenMatchScreen() {
       >
         {/* ── Sport ── */}
         <Text style={styles.sectionTitle}>Sport</Text>
-        {renderPicker(SPORTS, sport, setSport)}
+        {renderPicker(SPORTS, sport, handleSportChange)}
 
         {/* ── Type ── */}
         <Text style={styles.sectionTitle}>Type de match</Text>
-        {renderPicker(TYPES, matchType, setMatchType)}
+        {renderPicker(availableTypes, matchType, setMatchType)}
+        {isPadel && (
+          <Text style={styles.padelHint}>
+            Le padel se joue toujours à 4 joueurs (double)
+          </Text>
+        )}
 
         {/* ── Mode ── */}
         <Text style={styles.sectionTitle}>Mode de jeu</Text>
@@ -404,6 +421,12 @@ const styles = StyleSheet.create({
     color: Colors.TEXT,
     marginTop: 20,
     marginBottom: 10,
+  },
+  padelHint: {
+    fontSize: 13,
+    color: Colors.PRIMARY,
+    fontStyle: "italic",
+    marginTop: 6,
   },
 
   // ── Picker buttons ──

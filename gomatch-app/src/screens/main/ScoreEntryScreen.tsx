@@ -20,11 +20,12 @@ import type { SetScore } from "../../types";
 
 type Props = NativeStackScreenProps<HomeStackParamList, "SubmitScore">;
 
-const MAX_SETS = 5;
+const MAX_SETS = 3;
 const DEFAULT_SETS = 2;
 
 export function ScoreEntryScreen({ route, navigation }: Props) {
-  const { matchId, teamANames, teamBNames } = route.params;
+  const { matchId, sport, teamANames, teamBNames } = route.params;
+  const isPadel = sport === "padel";
 
   const [sets, setSets] = useState<SetScore[]>(
     Array.from({ length: DEFAULT_SETS }, () => ({ team_a: 0, team_b: 0 })),
@@ -67,6 +68,34 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
   const hasTiedSets = sets.some((s) => s.team_a === s.team_b && (s.team_a > 0 || s.team_b > 0));
   const allZeros = sets.every((s) => s.team_a === 0 && s.team_b === 0);
 
+  /** Validate set scores before submission. */
+  const validateSets = (): string | null => {
+    if (sets.length < 2 || sets.length > 3)
+      return "Un match se joue en 2 ou 3 sets.";
+    for (let i = 0; i < sets.length; i++) {
+      const s = sets[i];
+      const high = Math.max(s.team_a, s.team_b);
+      const low = Math.min(s.team_a, s.team_b);
+      // Super tie-break: padel 3rd set (index 2) when sets are 1-1
+      const isSuperTB = isPadel && i === 2;
+      if (isSuperTB) {
+        if (high < 10) return `Super tie-break : le gagnant doit atteindre 10 points minimum.`;
+        if (high - low < 2) return `Super tie-break : 2 points d'écart minimum.`;
+      } else {
+        const valid =
+          (high === 6 && low >= 0 && low <= 4) ||
+          (high === 7 && (low === 5 || low === 6));
+        if (!valid) return `Set ${i + 1} : score invalide (${s.team_a}-${s.team_b}).`;
+      }
+    }
+    // Check that there's a winner (2-0 or 2-1)
+    if (setsWonA !== 2 && setsWonB !== 2)
+      return "Le match doit avoir un gagnant (2 sets gagnants).";
+    return null;
+  };
+
+  const validationError = allZeros ? null : validateSets();
+
   const summaryText = allZeros
     ? "Entrez les scores de chaque set"
     : hasTiedSets
@@ -79,7 +108,7 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
 
   // ── Submit ──
 
-  const canSubmit = !allZeros && !hasTiedSets;
+  const canSubmit = !allZeros && !hasTiedSets && !validationError;
 
   const handleSubmit = () => {
     Alert.alert(
@@ -191,7 +220,9 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
         {/* Sets */}
         {sets.map((set, idx) => (
           <View key={idx} style={styles.setCard}>
-            <Text style={styles.setLabel}>Set {idx + 1}</Text>
+            <Text style={styles.setLabel}>
+              {isPadel && idx === 2 ? "Super tie-break" : `Set ${idx + 1}`}
+            </Text>
             <View style={styles.setInputRow}>
               {/* Team A score */}
               <View style={styles.scoreControl}>
@@ -267,6 +298,14 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Validation error */}
+        {validationError && (
+          <View style={styles.validationError}>
+            <Ionicons name="alert-circle" size={18} color={Colors.ERROR} />
+            <Text style={styles.validationErrorText}>{validationError}</Text>
+          </View>
+        )}
 
         {/* Summary */}
         <View style={styles.summaryCard}>
@@ -453,6 +492,22 @@ const styles = StyleSheet.create({
   setActionText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+
+  // ── Validation error ──
+  validationError: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.ERROR + "12",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  validationErrorText: {
+    fontSize: 13,
+    color: Colors.ERROR,
+    flex: 1,
   },
 
   // ── Summary ──

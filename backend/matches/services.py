@@ -7,6 +7,7 @@ from core.enums import (
     ParticipantRole,
     ParticipantStatus,
     SkillLevel,
+    SportType,
 )
 
 
@@ -35,7 +36,10 @@ class MatchCreationService:
         if scheduled_date < timezone.now().date():
             raise ValueError("Scheduled date cannot be in the past.")
 
+        # 1b. Padel is always doubles
         match_type = validated_data.get("match_type")
+        if validated_data.get("sport") == SportType.PADEL and match_type == MatchType.SINGLES:
+            raise ValueError("Le padel se joue uniquement en double (4 joueurs).")
         max_participants = 2 if match_type == MatchType.SINGLES else 4
 
         match = Match.objects.create(
@@ -75,7 +79,10 @@ class OpenMatchService:
         if validated_data["expires_at"] <= timezone.now():
             raise ValueError("Expiry date must be in the future.")
 
+        # 1b. Padel is always doubles
         match_type = validated_data.get("match_type")
+        if validated_data.get("sport") == SportType.PADEL and match_type == MatchType.SINGLES:
+            raise ValueError("Le padel se joue uniquement en double (4 joueurs).")
         max_participants = 2 if match_type == MatchType.SINGLES else 4
 
         match = Match.objects.create(

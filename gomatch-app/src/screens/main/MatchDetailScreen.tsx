@@ -17,6 +17,9 @@ import { Colors } from "../../constants/colors";
 import { useAuth } from "../../hooks/useAuth";
 import { matchesService } from "../../services/matches";
 import { scoringService } from "../../services/scoring";
+import { bookingsService } from "../../services/bookings";
+import { paymentsService } from "../../services/payments";
+import type { Payment } from "../../services/payments";
 import { formatDate, formatTime, getInitials } from "../../utils/helpers";
 import { LoadingScreen } from "../../components/LoadingScreen";
 import { NetworkError } from "../../components/NetworkError";
@@ -25,6 +28,7 @@ import { isNetworkError } from "../../utils/network";
 import type { HomeStackParamList } from "../../navigation/HomeStack";
 import type {
   Match,
+  Booking,
   MatchParticipant,
   MatchStatus,
   Score,
@@ -55,6 +59,8 @@ export function MatchDetailScreen() {
   const { matchId } = route.params;
 
   const [match, setMatch] = useState<Match | null>(null);
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [myPayment, setMyPayment] = useState<Payment | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -65,6 +71,24 @@ export function MatchDetailScreen() {
       const data = await matchesService.getMatch(matchId);
       setMatch(data);
       setError(null);
+
+      // Fetch booking linked to this match
+      try {
+        const bookingsRes = await bookingsService.getMyBookings();
+        const matchBooking = bookingsRes.results.find((b) => b.match === matchId);
+        setBooking(matchBooking || null);
+
+        // Check if user already paid
+        if (matchBooking) {
+          const payments = await paymentsService.getMyPayments();
+          const existing = payments.find(
+            (p) => p.booking === matchBooking.id && (p.status === "completed" || p.status === "pending"),
+          );
+          setMyPayment(existing || null);
+        }
+      } catch {
+        // Non-critical — ignore
+      }
     } catch (err) {
       setError(err);
     }
@@ -306,6 +330,7 @@ export function MatchDetailScreen() {
                 .join(", ");
               navigation.navigate("SubmitScore", {
                 matchId: match.id,
+                sport: match.sport,
                 teamANames: teamA || undefined,
                 teamBNames: teamB || undefined,
               });
@@ -337,6 +362,38 @@ export function MatchDetailScreen() {
               <Ionicons name="close-circle-outline" size={20} color="#FFF" />
               <Text style={styles.primaryBtnText}>Contester</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Pay button – if booking exists and not yet paid */}
+        {isParticipant && booking && !myPayment && (
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() =>
+              navigation.navigate("Payment", {
+                bookingId: booking.id,
+                matchId: match.id,
+                courtName: "Terrain réservé",
+                venueName: "Centre",
+                date: formatDate(match.scheduled_date),
+                time: formatTime(match.scheduled_time),
+                pricePerPlayer: parseFloat(booking.per_player_amount),
+              })
+            }
+            activeOpacity={0.8}
+          >
+            <Ionicons name="card-outline" size={20} color="#FFF" />
+            <Text style={styles.primaryBtnText}>
+              Payer ma part · CHF {parseFloat(booking.per_player_amount).toFixed(2)}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Payment done badge */}
+        {isParticipant && myPayment?.status === "completed" && (
+          <View style={styles.paidBadge}>
+            <Ionicons name="checkmark-circle" size={18} color={Colors.SUCCESS} />
+            <Text style={styles.paidText}>Paiement effectué</Text>
           </View>
         )}
 
@@ -771,5 +828,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: Colors.PRIMARY,
+  },
+  paidBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: Colors.SUCCESS + "12",
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  paidText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.SUCCESS,
   },
 });

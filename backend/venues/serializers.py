@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from venues.models import Venue, Court
+from venues.models import Court, TimeSlot, Venue
 
 
 class CourtSerializer(serializers.ModelSerializer):
@@ -16,6 +16,22 @@ class CourtSerializer(serializers.ModelSerializer):
             "is_indoor",
             "hourly_rate",
             "is_active",
+        ]
+        read_only_fields = ["id"]
+
+
+class TimeSlotSerializer(serializers.ModelSerializer):
+    """Serializer for TimeSlot model."""
+
+    class Meta:
+        model = TimeSlot
+        fields = [
+            "id",
+            "court",
+            "date",
+            "start_time",
+            "end_time",
+            "status",
         ]
         read_only_fields = ["id"]
 

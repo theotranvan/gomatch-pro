@@ -35,4 +35,6 @@ urlpatterns = [
     path("api/scores/", include("scoring.urls")),
     path("api/rankings/", include(ranking_urlpatterns)),
     path("api/chat/", include("chat.urls")),
+    path("api/bookings/", include("bookings.urls")),
+    path("api/payments/", include("payments.urls")),
 ]

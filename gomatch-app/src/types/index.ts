@@ -21,6 +21,8 @@ export type ChatRoomType = "match" | "open_match" | "tournament" | "direct";
 export type MessageType = "text" | "system" | "image";
 export type CourtSurface = "clay" | "hard" | "grass" | "artificial";
 export type UserRole = "PLAYER" | "ADMIN" | "VENUE_MANAGER";
+export type TimeSlotStatus = "available" | "held" | "booked";
+export type BookingStatus = "pending" | "confirmed" | "cancelled";
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -186,6 +188,31 @@ export interface VenueListItem {
   latitude: number;
   longitude: number;
   court_count: number;
+}
+
+// ── Time Slots ───────────────────────────────────────────────────────────────
+
+export interface TimeSlot {
+  id: string;
+  court: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  status: TimeSlotStatus;
+}
+
+// ── Bookings ─────────────────────────────────────────────────────────────────
+
+export interface Booking {
+  id: string;
+  time_slot: string;
+  match: string | null;
+  booked_by: string;
+  total_amount: string;
+  per_player_amount: string;
+  status: BookingStatus;
+  created_at: string;
+  cancelled_at: string | null;
 }
 
 // ── Scoring ──────────────────────────────────────────────────────────────────

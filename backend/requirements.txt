@@ -10,3 +10,5 @@ factory_boy
 gunicorn
 dj-database-url
 whitenoise
+stripe
+python-dotenv

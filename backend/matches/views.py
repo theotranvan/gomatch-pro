@@ -190,6 +190,13 @@ class MatchChangeStatusView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
         old = match.status
+        if not match.can_transition_to(new_status):
+            return Response(
+                {
+                    "detail": f"Cannot transition from '{old}' to '{new_status}'."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         match.status = new_status
         match.save(update_fields=["status", "updated_at"])
         return Response({"old_status": old, "new_status": new_status})

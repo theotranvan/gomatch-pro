@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.db.models import Count
 
-from venues.models import Venue, Court
+from venues.models import Court, TimeSlot, Venue
 
 
 class CourtInline(admin.TabularInline):
@@ -77,3 +77,15 @@ class CourtAdmin(admin.ModelAdmin):
     list_select_related = ("venue",)
     ordering = ("venue__name", "name")
     list_per_page = 25
+
+
+@admin.register(TimeSlot)
+class TimeSlotAdmin(admin.ModelAdmin):
+    """Admin view for TimeSlot with filters."""
+
+    list_display = ("court", "date", "start_time", "end_time", "status", "held_by")
+    list_filter = ("court", "date", "status")
+    search_fields = ("court__name", "court__venue__name")
+    list_select_related = ("court", "court__venue", "held_by")
+    ordering = ("date", "start_time")
+    list_per_page = 50

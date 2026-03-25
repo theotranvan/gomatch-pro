@@ -18,6 +18,15 @@ from core.enums import (
 class Match(models.Model):
     """A scheduled match between players."""
 
+    VALID_TRANSITIONS = {
+        MatchStatus.DRAFT: [MatchStatus.OPEN, MatchStatus.CONFIRMED],
+        MatchStatus.OPEN: [MatchStatus.CONFIRMED, MatchStatus.CANCELLED],
+        MatchStatus.CONFIRMED: [MatchStatus.IN_PROGRESS, MatchStatus.CANCELLED],
+        MatchStatus.IN_PROGRESS: [MatchStatus.COMPLETED],
+        MatchStatus.COMPLETED: [],
+        MatchStatus.CANCELLED: [],
+    }
+
     id = models.UUIDField(
         primary_key=True,
         default=uuid.uuid4,
@@ -97,6 +106,11 @@ class Match(models.Model):
     def is_full(self):
         """Whether the match has reached max participants."""
         return self.current_participants_count >= self.max_participants
+
+    def can_transition_to(self, new_status):
+        """Check if the match can transition to the given status."""
+        allowed = self.VALID_TRANSITIONS.get(self.status, [])
+        return new_status in allowed
 
     def save(self, *args, **kwargs):
         # Auto-calculate max_participants from match_type

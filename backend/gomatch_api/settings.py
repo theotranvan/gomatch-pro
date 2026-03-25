@@ -4,6 +4,9 @@ Django settings for gomatch_api project.
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 from datetime import timedelta
 
 import dj_database_url
@@ -50,6 +53,8 @@ INSTALLED_APPS = [
     "matches",
     "scoring",
     "chat",
+    "bookings",
+    "payments",
 ]
 
 MIDDLEWARE = [
@@ -222,6 +227,15 @@ MEDIA_ROOT = BASE_DIR / "media"
 # --------------------------------------------------------------------------
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# --------------------------------------------------------------------------
+# Stripe
+# --------------------------------------------------------------------------
+
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
 
 # --------------------------------------------------------------------------

@@ -2,11 +2,13 @@ import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { ProfileScreen } from "../screens/main/ProfileScreen";
 import { EditProfileScreen } from "../screens/main/EditProfileScreen";
+import { BookingDetailScreen } from "../screens/main/BookingDetailScreen";
 import { Colors } from "../constants/colors";
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   EditProfile: undefined;
+  BookingDetail: { bookingId: string };
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -30,6 +32,11 @@ export function ProfileStack() {
         name="EditProfile"
         component={EditProfileScreen}
         options={{ title: "Modifier le profil" }}
+      />
+      <Stack.Screen
+        name="BookingDetail"
+        component={BookingDetailScreen}
+        options={{ title: "Détail réservation" }}
       />
     </Stack.Navigator>
   );

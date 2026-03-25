@@ -3,7 +3,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-from core.enums import ScoreStatus, SportType
+from core.enums import ScoreStatus, SportType, TeamSide
 
 
 class Score(models.Model):
@@ -37,6 +37,13 @@ class Score(models.Model):
         blank=True,
         related_name="won_scores",
         verbose_name="winner",
+    )
+    winning_team = models.CharField(
+        max_length=20,
+        choices=TeamSide.choices,
+        null=True,
+        blank=True,
+        verbose_name="winning team",
     )
     status = models.CharField(
         max_length=20,

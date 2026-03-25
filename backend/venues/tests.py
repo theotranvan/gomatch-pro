@@ -1,11 +1,16 @@
+from datetime import date, time, timedelta
 from decimal import Decimal
+from io import StringIO
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.test import TestCase
-from rest_framework.test import APIClient
+from django.utils import timezone
 from rest_framework import status
+from rest_framework.test import APIClient
 
-from venues.models import Venue, Court
+from core.enums import TimeSlotStatus
+from venues.models import Court, TimeSlot, Venue
 
 User = get_user_model()
 
@@ -143,6 +148,124 @@ class VenueListAPITests(TestCase):
         self.client.force_authenticate(user=None)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class TimeSlotTestMixin:
+    """Shared setup for TimeSlot tests."""
+
+    def _create_fixtures(self):
+        self.user = User.objects.create_user(
+            email="slot@test.com", password="testpass123"
+        )
+        self.venue = Venue.objects.create(
+            name="Slot Venue",
+            address="Rue 1",
+            city="Genève",
+            latitude=Decimal("46.204"),
+            longitude=Decimal("6.143"),
+        )
+        self.court = Court.objects.create(
+            venue=self.venue,
+            name="Court 1",
+            sport="tennis",
+            surface="clay",
+            is_indoor=False,
+            hourly_rate=Decimal("40.00"),
+        )
+
+
+class HoldSlotTests(TimeSlotTestMixin, TestCase):
+    """Tests for holding and releasing time slots via the API."""
+
+    def setUp(self):
+        self._create_fixtures()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.slot = TimeSlot.objects.create(
+            court=self.court,
+            date=date(2026, 7, 1),
+            start_time=time(10, 0),
+            end_time=time(11, 0),
+        )
+        self.hold_url = f"/api/venues/courts/{self.court.pk}/slots/hold/"
+        self.release_url = f"/api/venues/slots/{self.slot.pk}/release/"
+
+    def test_hold_slot(self):
+        """Holding an available slot should set HELD status."""
+        response = self.client.post(self.hold_url, {"slot_id": str(self.slot.pk)})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.slot.refresh_from_db()
+        self.assertEqual(self.slot.status, TimeSlotStatus.HELD)
+        self.assertEqual(self.slot.held_by, self.user)
+        self.assertIsNotNone(self.slot.held_until)
+
+    def test_hold_already_held_fails(self):
+        """Holding an already-held slot should return 400."""
+        self.slot.status = TimeSlotStatus.HELD
+        self.slot.held_by = self.user
+        self.slot.held_until = timezone.now() + timedelta(minutes=60)
+        self.slot.save()
+        response = self.client.post(self.hold_url, {"slot_id": str(self.slot.pk)})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("not available", response.data["detail"])
+
+    def test_release_slot(self):
+        """Releasing a held slot should set it back to AVAILABLE."""
+        self.slot.status = TimeSlotStatus.HELD
+        self.slot.held_by = self.user
+        self.slot.held_until = timezone.now() + timedelta(minutes=60)
+        self.slot.save()
+        response = self.client.post(self.release_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.slot.refresh_from_db()
+        self.assertEqual(self.slot.status, TimeSlotStatus.AVAILABLE)
+        self.assertIsNone(self.slot.held_by)
+        self.assertIsNone(self.slot.held_until)
+
+
+class GenerateTimeSlotsTests(TimeSlotTestMixin, TestCase):
+    """Tests for the generate_time_slots management command."""
+
+    def setUp(self):
+        self._create_fixtures()
+
+    def test_generate_slots(self):
+        """Command should create 14 one-hour slots (8h-22h)."""
+        out = StringIO()
+        call_command(
+            "generate_time_slots",
+            str(self.court.pk),
+            "2026-08-01",
+            stdout=out,
+        )
+        slots = TimeSlot.objects.filter(court=self.court, date=date(2026, 8, 1))
+        self.assertEqual(slots.count(), 14)
+        self.assertIn("Created 14", out.getvalue())
+
+
+class ReleaseExpiredHoldsTests(TimeSlotTestMixin, TestCase):
+    """Tests for the release_expired_holds management command."""
+
+    def setUp(self):
+        self._create_fixtures()
+
+    def test_release_expired(self):
+        """Expired held slots should be released back to AVAILABLE."""
+        slot = TimeSlot.objects.create(
+            court=self.court,
+            date=date(2026, 7, 1),
+            start_time=time(14, 0),
+            end_time=time(15, 0),
+            status=TimeSlotStatus.HELD,
+            held_by=self.user,
+            held_until=timezone.now() - timedelta(minutes=1),
+        )
+        out = StringIO()
+        call_command("release_expired_holds", stdout=out)
+        slot.refresh_from_db()
+        self.assertEqual(slot.status, TimeSlotStatus.AVAILABLE)
+        self.assertIsNone(slot.held_by)
+        self.assertIn("Released 1", out.getvalue())
 
 
 class VenueDetailAPITests(TestCase):

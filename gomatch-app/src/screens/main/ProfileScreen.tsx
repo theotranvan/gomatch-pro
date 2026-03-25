@@ -7,6 +7,8 @@ import {
   RefreshControl,
   Alert,
   Image,
+  TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -18,7 +20,8 @@ import { NetworkError } from "../../components/NetworkError";
 import { ErrorState } from "../../components/ErrorState";
 import { isNetworkError } from "../../utils/network";
 import api from "../../services/api";
-import type { Ranking, SkillLevel, PlayMode } from "../../types";
+import { bookingsService } from "../../services/bookings";
+import type { Ranking, SkillLevel, PlayMode, Booking, BookingStatus } from "../../types";
 import type { ProfileStackParamList } from "../../navigation/ProfileStack";
 
 const LEVEL_LABELS: Record<SkillLevel, string> = {
@@ -38,6 +41,7 @@ export function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const [refreshing, setRefreshing] = useState(false);
   const [rankings, setRankings] = useState<Ranking[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
 
   const fetchRankings = useCallback(async () => {
     try {
@@ -48,15 +52,25 @@ export function ProfileScreen() {
     }
   }, []);
 
+  const fetchBookings = useCallback(async () => {
+    try {
+      const res = await bookingsService.getMyBookings();
+      setBookings(res.results);
+    } catch {
+      // silently fail
+    }
+  }, []);
+
   useEffect(() => {
     fetchRankings();
-  }, [fetchRankings]);
+    fetchBookings();
+  }, [fetchRankings, fetchBookings]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshUser(), fetchRankings()]);
+    await Promise.all([refreshUser(), fetchRankings(), fetchBookings()]);
     setRefreshing(false);
-  }, [refreshUser, fetchRankings]);
+  }, [refreshUser, fetchRankings, fetchBookings]);
 
   const handleLogout = () => {
     Alert.alert("Déconnexion", "Voulez-vous vraiment vous déconnecter ?", [
@@ -179,6 +193,42 @@ export function ProfileScreen() {
             <Text style={styles.rankingPosition}>#{r.rank_position}</Text>
           </View>
         ))}
+      </View>
+
+      {/* ── Réservations ── */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Mes réservations</Text>
+        {bookings.length === 0 ? (
+          <Text style={styles.emptyBookings}>Aucune réservation</Text>
+        ) : (
+          bookings.map((b) => {
+            const statusCfg: Record<BookingStatus, { label: string; color: string }> = {
+              pending: { label: "En attente", color: "#F59E0B" },
+              confirmed: { label: "Confirmée", color: Colors.SUCCESS },
+              cancelled: { label: "Annulée", color: Colors.ERROR },
+            };
+            const s = statusCfg[b.status];
+            return (
+              <TouchableOpacity
+                key={b.id}
+                style={styles.bookingRow}
+                onPress={() => navigation.navigate("BookingDetail" as any, { bookingId: b.id })}
+                activeOpacity={0.7}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bookingAmount}>CHF {b.total_amount}</Text>
+                  <Text style={styles.bookingDate}>
+                    {new Date(b.created_at).toLocaleDateString("fr-CH")}
+                  </Text>
+                </View>
+                <View style={[styles.bookingBadge, { backgroundColor: s.color + "15" }]}>
+                  <Text style={[styles.bookingBadgeText, { color: s.color }]}>{s.label}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.TEXT_SECONDARY} />
+              </TouchableOpacity>
+            );
+          })
+        )}
       </View>
 
       {/* ── Actions ── */}
@@ -339,6 +389,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: Colors.TEXT_SECONDARY,
+  },
+  // ── Bookings ──
+  emptyBookings: {
+    fontSize: 14,
+    color: Colors.TEXT_SECONDARY,
+    fontStyle: "italic",
+    textAlign: "center",
+    paddingVertical: 12,
+  },
+  bookingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.BORDER,
+    gap: 8,
+  },
+  bookingAmount: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.TEXT,
+  },
+  bookingDate: {
+    fontSize: 13,
+    color: Colors.TEXT_SECONDARY,
+    marginTop: 2,
+  },
+  bookingBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  bookingBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   // ── Buttons ──
   editButton: {

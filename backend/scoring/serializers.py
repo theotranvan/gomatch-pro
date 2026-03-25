@@ -18,6 +18,7 @@ class ScoreSerializer(serializers.ModelSerializer):
             "submitted_by",
             "sets",
             "winner",
+            "winning_team",
             "status",
             "confirmed_by",
             "confirmed_at",

@@ -140,6 +140,31 @@ class CreateMatchAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["max_participants"], 4)
 
+    def test_create_padel_singles_fails(self):
+        """Padel singles should be rejected (padel is always doubles)."""
+        data = {
+            "sport": "padel",
+            "match_type": "singles",
+            "play_mode": "friendly",
+            "scheduled_date": "2026-04-15",
+            "scheduled_time": "10:00",
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_tennis_singles_succeeds(self):
+        """Tennis singles should still be allowed."""
+        data = {
+            "sport": "tennis",
+            "match_type": "singles",
+            "play_mode": "friendly",
+            "scheduled_date": "2026-04-15",
+            "scheduled_time": "10:00",
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["max_participants"], 2)
+
 
 class JoinMatchAPITests(TestCase):
     """Tests for POST /api/matches/:id/join/."""
@@ -316,6 +341,20 @@ class CreateOpenMatchAPITests(TestCase):
         self.assertEqual(response.data["required_level_max"], "intermediate")
         self.assertEqual(response.data["spots_left"], 1)
         self.assertEqual(len(response.data["participants"]), 1)
+
+    def test_create_open_padel_singles_fails(self):
+        """Padel singles open match should be rejected."""
+        data = {
+            "sport": "padel",
+            "match_type": "singles",
+            "play_mode": "friendly",
+            "scheduled_date": "2026-04-20",
+            "scheduled_time": "10:00",
+            "description": "Should fail",
+            "expires_at": (timezone.now() + timedelta(days=3)).isoformat(),
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class JoinOpenMatchAPITests(TestCase):
@@ -494,3 +533,97 @@ class OpenMatchListAPITests(TestCase):
         results = response.data["results"]
         # Padel match is expired, so 0 results
         self.assertEqual(len(results), 0)
+
+
+class MatchStatusTransitionTests(TestCase):
+    """Tests for match status transition validation."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="transition@test.com",
+            password="testpass123",
+        )
+        self.client.force_authenticate(user=self.user)
+        self.match = Match.objects.create(
+            sport=SportType.TENNIS,
+            match_type=MatchType.SINGLES,
+            play_mode=PlayMode.FRIENDLY,
+            scheduled_date=date(2026, 6, 1),
+            scheduled_time=time(10, 0),
+            created_by=self.user,
+            max_participants=2,
+        )
+
+    def _change_status_url(self):
+        return f"/api/matches/{self.match.pk}/change-status/"
+
+    def test_valid_transition_draft_to_open(self):
+        """DRAFT -> OPEN should succeed."""
+        response = self.client.post(
+            self._change_status_url(), {"status": MatchStatus.OPEN}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.OPEN)
+
+    def test_valid_transition_draft_to_confirmed(self):
+        """DRAFT -> CONFIRMED should succeed."""
+        response = self.client.post(
+            self._change_status_url(), {"status": MatchStatus.CONFIRMED}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.CONFIRMED)
+
+    def test_valid_transition_confirmed_to_in_progress(self):
+        """CONFIRMED -> IN_PROGRESS should succeed."""
+        self.match.status = MatchStatus.CONFIRMED
+        self.match.save()
+        response = self.client.post(
+            self._change_status_url(), {"status": MatchStatus.IN_PROGRESS}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.IN_PROGRESS)
+
+    def test_valid_transition_in_progress_to_completed(self):
+        """IN_PROGRESS -> COMPLETED should succeed."""
+        self.match.status = MatchStatus.IN_PROGRESS
+        self.match.save()
+        response = self.client.post(
+            self._change_status_url(), {"status": MatchStatus.COMPLETED}
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.COMPLETED)
+
+    def test_invalid_transition_completed_to_draft(self):
+        """COMPLETED -> DRAFT should be rejected."""
+        self.match.status = MatchStatus.COMPLETED
+        self.match.save()
+        response = self.client.post(
+            self._change_status_url(), {"status": MatchStatus.DRAFT}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("Cannot transition", response.data["detail"])
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.COMPLETED)
+
+    def test_invalid_transition_cancelled_to_open(self):
+        """CANCELLED -> OPEN should be rejected."""
+        self.match.status = MatchStatus.CANCELLED
+        self.match.save()
+        response = self.client.post(
+            self._change_status_url(), {"status": MatchStatus.OPEN}
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.match.refresh_from_db()
+        self.assertEqual(self.match.status, MatchStatus.CANCELLED)
+
+    def test_can_transition_to_method(self):
+        """Model method should correctly report allowed transitions."""
+        self.assertTrue(self.match.can_transition_to(MatchStatus.OPEN))
+        self.assertTrue(self.match.can_transition_to(MatchStatus.CONFIRMED))
+        self.assertFalse(self.match.can_transition_to(MatchStatus.COMPLETED))
+        self.assertFalse(self.match.can_transition_to(MatchStatus.IN_PROGRESS))

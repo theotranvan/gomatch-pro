@@ -100,3 +100,16 @@ class CourtSurface(models.TextChoices):
     HARD = "hard", "Hard"
     GRASS = "grass", "Grass"
     ARTIFICIAL = "artificial", "Artificial"
+
+
+class PaymentStatus(models.TextChoices):
+    """Statuses for payments."""
+    PENDING = "pending", "Pending"
+    COMPLETED = "completed", "Completed"
+    FAILED = "failed", "Failed"
+    REFUNDED = "refunded", "Refunded"
+
+
+class PaymentMethod(models.TextChoices):
+    """Payment method types."""
+    STRIPE = "stripe", "Stripe"

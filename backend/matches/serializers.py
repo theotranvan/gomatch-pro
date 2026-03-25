@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from matches.models import Match, MatchParticipant, OpenMatch
+from core.enums import SportType, MatchType
 from scoring.serializers import ScoreSerializer
 
 
@@ -112,6 +113,13 @@ class CreateMatchSerializer(serializers.Serializer):
     )
     scheduled_date = serializers.DateField()
     scheduled_time = serializers.TimeField()
+
+    def validate(self, attrs):
+        if attrs.get("sport") == SportType.PADEL and attrs.get("match_type") == MatchType.SINGLES:
+            raise serializers.ValidationError(
+                "Le padel se joue uniquement en double (4 joueurs)."
+            )
+        return attrs
 
 
 # ---------------------------------------------------------------------------
@@ -238,3 +246,10 @@ class CreateOpenMatchSerializer(serializers.Serializer):
     )
     description = serializers.CharField(max_length=500, required=False, default="")
     expires_at = serializers.DateTimeField()
+
+    def validate(self, attrs):
+        if attrs.get("sport") == SportType.PADEL and attrs.get("match_type") == MatchType.SINGLES:
+            raise serializers.ValidationError(
+                "Le padel se joue uniquement en double (4 joueurs)."
+            )
+        return attrs

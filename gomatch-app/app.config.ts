@@ -43,7 +43,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   web: {
     favicon: "./assets/favicon.png",
   },
+  plugins: ["@stripe/stripe-react-native"],
   extra: {
     apiUrl: process.env.API_URL || "http://localhost:8000/api",
+    stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || "",
   },
 });

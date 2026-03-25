@@ -3,7 +3,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-from core.enums import SportType, CourtSurface
+from core.enums import CourtSurface, SportType, TimeSlotStatus
 
 
 class Venue(models.Model):
@@ -133,3 +133,59 @@ class Court(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.venue.name}"
+
+
+class TimeSlot(models.Model):
+    """A bookable time slot on a court."""
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+    court = models.ForeignKey(
+        Court,
+        on_delete=models.CASCADE,
+        related_name="time_slots",
+        verbose_name="court",
+    )
+    date = models.DateField(
+        verbose_name="date",
+    )
+    start_time = models.TimeField(
+        verbose_name="start time",
+    )
+    end_time = models.TimeField(
+        verbose_name="end time",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=TimeSlotStatus.choices,
+        default=TimeSlotStatus.AVAILABLE,
+        verbose_name="status",
+    )
+    held_until = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="held until",
+    )
+    held_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="held_slots",
+        verbose_name="held by",
+    )
+
+    class Meta:
+        db_table = "time_slots"
+        verbose_name = "time slot"
+        verbose_name_plural = "time slots"
+        unique_together = ("court", "date", "start_time")
+        ordering = ["date", "start_time"]
+
+    def __str__(self):
+        return (
+            f"{self.court} | {self.date} {self.start_time}-{self.end_time}"
+        )
