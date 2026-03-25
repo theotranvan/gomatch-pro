@@ -19,11 +19,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend project
 COPY backend/ .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput 2>/dev/null || true
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
 
 # Expose port
 EXPOSE 8000
 
-# Run with gunicorn
-CMD ["gunicorn", "gomatch_api.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
+# Run entrypoint
+CMD ["./entrypoint.sh"]
