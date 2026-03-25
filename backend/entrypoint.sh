@@ -2,6 +2,15 @@
 set -e
 
 echo "=== GoMatch API Starting ==="
+echo "PORT=$PORT"
+echo "RAILWAY_ENVIRONMENT=$RAILWAY_ENVIRONMENT"
+echo "DJANGO_DEBUG=$DJANGO_DEBUG"
+
+# Verify Django can load
+echo "Checking Django setup..."
+python -c "import django; django.setup(); print('Django setup OK')" || {
+    echo "ERROR: Django failed to initialize"; exit 1;
+}
 
 # Run migrations (non-fatal: app starts even if migrations fail)
 echo "Running migrations..."
@@ -13,10 +22,11 @@ python manage.py collectstatic --noinput || echo "WARNING: collectstatic failed,
 
 # Start gunicorn on the port Railway assigns (default 8000)
 PORT="${PORT:-8000}"
-echo "Starting gunicorn on port $PORT..."
+echo "Starting gunicorn on 0.0.0.0:$PORT ..."
 exec gunicorn gomatch_api.wsgi:application \
     --bind "0.0.0.0:$PORT" \
-    --workers 3 \
+    --workers 2 \
     --timeout 120 \
+    --preload \
     --access-logfile - \
     --error-logfile -
