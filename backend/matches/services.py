@@ -1,5 +1,6 @@
 from django.utils import timezone
 
+from accounts.models import PlayerProfile
 from matches.models import Match, MatchParticipant, OpenMatch
 from core.enums import (
     MatchStatus,
@@ -8,7 +9,9 @@ from core.enums import (
     ParticipantStatus,
     SkillLevel,
     SportType,
+    TeamSide,
 )
+from core.notifications import NotificationService
 
 
 SKILL_LEVEL_ORDER = [
@@ -111,6 +114,44 @@ class OpenMatchService:
             status=ParticipantStatus.ACCEPTED,
         )
 
+        # Notify matching players about the new open match
+        sport = validated_data["sport"]
+        level_field = "level_tennis" if sport == SportType.TENNIS else "level_padel"
+        filters = {
+            f"{level_field}__isnull": False,
+        }
+        level_min = validated_data.get("required_level_min")
+        level_max = validated_data.get("required_level_max")
+        if level_min:
+            min_idx = SKILL_LEVEL_ORDER.index(level_min)
+            compatible = [lv.value for lv in SKILL_LEVEL_ORDER[min_idx:]]
+            filters[f"{level_field}__in"] = compatible
+        if level_max:
+            max_idx = SKILL_LEVEL_ORDER.index(level_max)
+            compatible = [lv.value for lv in SKILL_LEVEL_ORDER[: max_idx + 1]]
+            if f"{level_field}__in" in filters:
+                existing = set(filters[f"{level_field}__in"])
+                filters[f"{level_field}__in"] = list(existing & set(compatible))
+            else:
+                filters[f"{level_field}__in"] = compatible
+
+        matching_profiles = PlayerProfile.objects.filter(**filters).exclude(
+            user=user
+        )
+        city = user.profile.city
+        if city:
+            matching_profiles = matching_profiles.filter(city__iexact=city)
+
+        target_ids = list(matching_profiles.values_list("user_id", flat=True))
+        if target_ids:
+            sport_label = match.get_sport_display().lower()
+            NotificationService.send_push(
+                user_ids=target_ids,
+                title="Nouvelle session disponible !",
+                body=f"Nouvelle session de {sport_label} près de chez toi !",
+                data={"type": "match", "match_id": str(match.pk)},
+            )
+
         return open_match
 
     @staticmethod
@@ -176,5 +217,16 @@ class OpenMatchService:
         if match.is_full and match.status == MatchStatus.OPEN:
             match.status = MatchStatus.CONFIRMED
             match.save(update_fields=["status", "updated_at"])
+
+            # Auto-assign teams for doubles matches
+            if match.match_type == MatchType.DOUBLES:
+                players = list(
+                    MatchParticipant.objects.filter(
+                        match=match, status=ParticipantStatus.ACCEPTED,
+                    ).order_by("joined_at")
+                )
+                for i, p in enumerate(players):
+                    p.team = TeamSide.TEAM_A if i < 2 else TeamSide.TEAM_B
+                    p.save(update_fields=["team"])
 
         return participant

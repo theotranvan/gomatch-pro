@@ -193,6 +193,15 @@ export function ProfileScreen() {
             <Text style={styles.rankingPosition}>#{r.rank_position}</Text>
           </View>
         ))}
+
+        <TouchableOpacity
+          style={styles.statsLink}
+          onPress={() => navigation.navigate("PlayerStats", {})}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.statsLinkText}>Voir les statistiques détaillées</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.PRIMARY} />
+        </TouchableOpacity>
       </View>
 
       {/* ── Réservations ── */}
@@ -431,5 +440,21 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     marginBottom: 0,
+  },
+  // ── Stats link ──
+  statsLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: Colors.BORDER,
+    marginTop: 8,
+  },
+  statsLinkText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.PRIMARY,
+    marginRight: 4,
   },
 });

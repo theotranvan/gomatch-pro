@@ -8,6 +8,7 @@ import { RankingScreen } from "../screens/main/RankingScreen";
 import { PlayerSearchScreen } from "../screens/main/PlayerSearchScreen";
 import { PlayerProfileScreen } from "../screens/main/PlayerProfileScreen";
 import { PaymentScreen } from "../screens/main/PaymentScreen";
+import { StatsScreen } from "../screens/main/StatsScreen";
 import { Colors } from "../constants/colors";
 
 export type HomeStackParamList = {
@@ -18,6 +19,7 @@ export type HomeStackParamList = {
   Ranking: undefined;
   PlayerSearch: undefined;
   PlayerProfile: { playerId: string };
+  PlayerStats: { playerId?: string };
   Payment: {
     bookingId: string;
     matchId: string;
@@ -80,6 +82,11 @@ export function HomeStack() {
         name="Payment"
         component={PaymentScreen}
         options={{ title: "Paiement" }}
+      />
+      <Stack.Screen
+        name="PlayerStats"
+        component={StatsScreen}
+        options={{ title: "Statistiques" }}
       />
     </Stack.Navigator>
   );

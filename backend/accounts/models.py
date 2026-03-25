@@ -168,6 +168,12 @@ class PlayerProfile(models.Model):
         default=dict,
         verbose_name="availability",
     )
+    expo_push_token = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Expo push token",
+    )
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name="created at",

@@ -11,6 +11,7 @@ from accounts.serializers import (
     LoginSerializer,
     PlayerProfileSerializer,
     UserMeSerializer,
+    PushTokenSerializer,
 )
 
 
@@ -138,6 +139,21 @@ class UpdateProfileView(generics.UpdateAPIView):
 
     def get_object(self):
         return self.request.user.profile
+
+
+class RegisterPushTokenView(APIView):
+    """POST /api/auth/push-token/ — Register Expo push token."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(tags=["Auth"], summary="Register push token", request=PushTokenSerializer)
+    def post(self, request):
+        serializer = PushTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        profile = request.user.profile
+        profile.expo_push_token = serializer.validated_data["token"]
+        profile.save(update_fields=["expo_push_token"])
+        return Response({"detail": "Push token registered."}, status=status.HTTP_200_OK)
 
 
 @extend_schema(tags=["Players"])

@@ -12,3 +12,4 @@ dj-database-url
 whitenoise
 stripe
 python-dotenv
+requests

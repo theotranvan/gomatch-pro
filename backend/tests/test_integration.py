@@ -31,6 +31,7 @@ from core.enums import (
     ScoreStatus,
     SkillLevel,
     SportType,
+    TeamSide,
 )
 from matches.models import Match, MatchParticipant, OpenMatch
 from scoring.models import Ranking, Score
@@ -264,8 +265,9 @@ class FullScenarioIntegrationTest(APITestCase):
         score = Score.objects.get(pk=score_id)
         self.assertEqual(score.submitted_by, alice_user)
         self.assertEqual(len(score.sets), 2)
-        # team_a (Alice, first joined) wins both sets → winner = Alice's profile
-        self.assertEqual(score.winner, alice_user.profile)
+        # Doubles match: winning_team is set, not winner (which is None for doubles)
+        self.assertIsNone(score.winner)
+        self.assertEqual(score.winning_team, TeamSide.TEAM_A)
 
         # ============================================================== #
         # Step 11: Bob confirms the score
@@ -285,8 +287,9 @@ class FullScenarioIntegrationTest(APITestCase):
         # ============================================================== #
         # Step 12: Verify rankings are updated
         # ============================================================== #
-        # Competitive match → rankings should be created/updated
-        # Winner (Alice, team_a) gets +25, losers get -15
+        # Competitive doubles match → rankings should be created/updated
+        # team_a (Alice + Bob, first two joined) wins → +25 each
+        # team_b (Charlie + Diana) loses → -15 each
         alice_ranking = Ranking.objects.get(
             player=alice_user.profile,
             sport=SportType.PADEL,
@@ -298,8 +301,8 @@ class FullScenarioIntegrationTest(APITestCase):
             player=bob_user.profile,
             sport=SportType.PADEL,
         )
-        self.assertEqual(bob_ranking.points, 985)  # 1000 - 15
-        self.assertEqual(bob_ranking.losses, 1)
+        self.assertEqual(bob_ranking.points, 1025)  # 1000 + 25 (same team as Alice)
+        self.assertEqual(bob_ranking.wins, 1)
 
         # Verify rankings via API
         resp = self.alice.get(
@@ -482,7 +485,7 @@ class OpenMatchJoinValidationTest(APITestCase):
             "/api/matches/open/create/",
             {
                 "sport": SportType.PADEL,
-                "match_type": "singles",
+                "match_type": "doubles",
                 "play_mode": PlayMode.COMPETITIVE,
                 "scheduled_date": (date.today() + timedelta(days=3)).isoformat(),
                 "scheduled_time": "18:00",

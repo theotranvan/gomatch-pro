@@ -9,6 +9,7 @@ from core.enums import (
     SportType,
     TeamSide,
 )
+from core.notifications import NotificationService
 from matches.models import MatchParticipant
 from scoring.models import Ranking, Score
 
@@ -167,6 +168,22 @@ class ScoreService:
             winning_team=winning_team,
             status=ScoreStatus.PENDING,
         )
+
+        # Notify other participants to confirm the score
+        submitter_name = user.profile.first_name or user.email
+        other_ids = list(
+            MatchParticipant.objects.filter(
+                match=match, status=ParticipantStatus.ACCEPTED,
+            ).exclude(player__user=user).values_list("player__user_id", flat=True)
+        )
+        if other_ids:
+            NotificationService.send_push(
+                user_ids=other_ids,
+                title="Score soumis",
+                body=f"{submitter_name} a soumis le score. Confirmez-le !",
+                data={"type": "score", "match_id": str(match.pk)},
+            )
+
         return score
 
     @staticmethod
@@ -210,6 +227,20 @@ class ScoreService:
         # 4. Update rankings for competitive matches
         if match.play_mode == PlayMode.COMPETITIVE:
             RankingService.update_rankings(score)
+
+        # Notify all participants that the score is confirmed
+        participant_ids = list(
+            MatchParticipant.objects.filter(
+                match=match, status=ParticipantStatus.ACCEPTED,
+            ).values_list("player__user_id", flat=True)
+        )
+        if participant_ids:
+            NotificationService.send_push(
+                user_ids=participant_ids,
+                title="Score validé !",
+                body="Score validé ! Votre classement a été mis à jour.",
+                data={"type": "score", "match_id": str(match.pk)},
+            )
 
         return score
 

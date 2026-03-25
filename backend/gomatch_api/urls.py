@@ -12,7 +12,7 @@ from drf_spectacular.views import (
 )
 
 from accounts.urls import player_urlpatterns
-from scoring.urls import ranking_urlpatterns
+from scoring.urls import ranking_urlpatterns, stats_urlpatterns
 
 
 def health_check(request):
@@ -34,7 +34,9 @@ urlpatterns = [
     path("api/matches/", include("matches.urls")),
     path("api/scores/", include("scoring.urls")),
     path("api/rankings/", include(ranking_urlpatterns)),
+    path("api/stats/", include(stats_urlpatterns)),
     path("api/chat/", include("chat.urls")),
     path("api/bookings/", include("bookings.urls")),
     path("api/payments/", include("payments.urls")),
+    path("api/tournaments/", include("competitions.urls")),
 ]

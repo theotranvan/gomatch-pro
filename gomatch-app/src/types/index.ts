@@ -23,6 +23,10 @@ export type CourtSurface = "clay" | "hard" | "grass" | "artificial";
 export type UserRole = "PLAYER" | "ADMIN" | "VENUE_MANAGER";
 export type TimeSlotStatus = "available" | "held" | "booked";
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
+export type TournamentFormat = "single_elimination" | "round_robin";
+export type TournamentStatus = "registration" | "in_progress" | "completed" | "cancelled";
+export type TournamentParticipantStatus = "registered" | "checked_in" | "eliminated" | "winner";
+export type TournamentMatchStatus = "scheduled" | "in_progress" | "completed";
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -277,4 +281,105 @@ export interface PaginatedResponse<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+}
+
+// ── Tournaments ──────────────────────────────────────────────────────────────
+
+export interface TournamentParticipant {
+  id: string;
+  player: string;
+  player_name: string;
+  partner: string | null;
+  partner_name: string | null;
+  seed: number | null;
+  status: TournamentParticipantStatus;
+  registered_at: string;
+}
+
+export interface TournamentMatch {
+  id: string;
+  position: number;
+  participant_a: string | null;
+  participant_a_name: string | null;
+  participant_b: string | null;
+  participant_b_name: string | null;
+  winner: string | null;
+  winner_name: string | null;
+  match: string | null;
+  status: TournamentMatchStatus;
+}
+
+export interface TournamentRound {
+  id: string;
+  round_number: number;
+  round_name: string;
+  status: string;
+  matches: TournamentMatch[];
+}
+
+export interface TournamentListItem {
+  id: string;
+  name: string;
+  sport: Sport;
+  match_type: MatchType;
+  format: TournamentFormat;
+  status: TournamentStatus;
+  max_participants: number;
+  current_participants_count: number;
+  start_date: string;
+  end_date: string | null;
+  venue: string | null;
+  venue_name: string | null;
+  entry_fee: string;
+  required_level_min: SkillLevel | null;
+  created_by_name: string;
+  created_at: string;
+}
+
+export interface Tournament extends TournamentListItem {
+  description: string;
+  created_by: string;
+  participants: TournamentParticipant[];
+  rounds: TournamentRound[];
+  updated_at: string;
+}
+
+// ── Player Stats ─────────────────────────────────────────────────────────────
+
+export interface SportStats {
+  sport: Sport;
+  matches_played: number;
+  matches_won: number;
+  matches_lost: number;
+  win_rate: number;
+  sets_won: number;
+  sets_lost: number;
+}
+
+export interface MonthlyMatches {
+  month: string;
+  count: number;
+}
+
+export interface PointSnapshot {
+  date: string;
+  points: number;
+}
+
+export interface FavoriteVenue {
+  name: string;
+  matches_count: number;
+}
+
+export interface PlayerStats {
+  matches_played: number;
+  matches_won: number;
+  matches_lost: number;
+  win_rate: number;
+  sports: Record<string, SportStats>;
+  current_streak: number;
+  best_streak: number;
+  favorite_venue: FavoriteVenue | null;
+  matches_per_month: MonthlyMatches[];
+  points_evolution: Record<string, PointSnapshot[]>;
 }

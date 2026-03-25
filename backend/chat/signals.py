@@ -3,6 +3,7 @@ from django.dispatch import receiver
 
 from chat.models import ChatMessage, ChatRoom
 from core.enums import ChatRoomType, MessageType, ParticipantStatus
+from core.notifications import NotificationService
 from matches.models import Match, MatchParticipant
 
 
@@ -28,6 +29,7 @@ def add_participant_to_chatroom(sender, instance, created, **kwargs):
     """
     When a MatchParticipant is created with ACCEPTED status,
     add the player's user to the ChatRoom and create a system message.
+    Also notify the match creator.
     """
     if not created:
         return
@@ -56,3 +58,41 @@ def add_participant_to_chatroom(sender, instance, created, **kwargs):
         content=f"{first_name} a rejoint le match",
         message_type=MessageType.SYSTEM,
     )
+
+    # Notify match creator that someone joined
+    if match.created_by_id != user.pk:
+        sport_label = match.get_sport_display()
+        NotificationService.send_push(
+            user_ids=[match.created_by_id],
+            title="Nouveau joueur !",
+            body=f"{first_name} a rejoint votre match de {sport_label}",
+            data={"type": "match", "match_id": str(match.pk)},
+        )
+
+
+@receiver(post_save, sender=ChatMessage)
+def notify_new_chat_message(sender, instance, created, **kwargs):
+    """Notify chat room participants when a new text message is sent."""
+    if not created:
+        return
+    if instance.message_type != MessageType.TEXT:
+        return
+
+    room = instance.room
+    sender_name = ""
+    try:
+        sender_name = instance.sender.profile.first_name or instance.sender.email
+    except Exception:
+        sender_name = instance.sender.email
+
+    # Notify all participants except the sender
+    recipient_ids = list(
+        room.participants.exclude(pk=instance.sender_id).values_list("pk", flat=True)
+    )
+    if recipient_ids:
+        NotificationService.send_push(
+            user_ids=recipient_ids,
+            title="Nouveau message",
+            body=f"Nouveau message de {sender_name} dans le chat du match",
+            data={"type": "chat", "room_id": str(room.pk)},
+        )

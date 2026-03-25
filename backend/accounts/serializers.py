@@ -151,3 +151,9 @@ class UserMeSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_login",
         ]
+
+
+class PushTokenSerializer(serializers.Serializer):
+    """Serializer for registering an Expo push token."""
+
+    token = serializers.CharField(max_length=255)

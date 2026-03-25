@@ -8,12 +8,15 @@ import { CreateMatchScreen } from "../screens/main/CreateMatchScreen";
 import { VenuesStack } from "./VenuesStack";
 import { ChatStack } from "./ChatStack";
 import { ProfileStack } from "./ProfileStack";
+import { TournamentsStack } from "./TournamentsStack";
 import { Colors } from "../constants/colors";
+import { useNotifications } from "../hooks/useNotifications";
 
 export type MainTabParamList = {
   Home: undefined;
   OpenMatches: undefined;
   CreateMatch: undefined;
+  Tournaments: undefined;
   Chat: undefined;
   Venues: undefined;
   Profile: undefined;
@@ -22,6 +25,8 @@ export type MainTabParamList = {
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export function MainTabs() {
+  useNotifications();
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -78,6 +83,17 @@ export function MainTabs() {
             </View>
           ),
           tabBarLabel: () => null,
+        }}
+      />
+      <Tab.Screen
+        name="Tournaments"
+        component={TournamentsStack}
+        options={{
+          title: "Tournois",
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="trophy-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen

@@ -113,3 +113,39 @@ class PaymentStatus(models.TextChoices):
 class PaymentMethod(models.TextChoices):
     """Payment method types."""
     STRIPE = "stripe", "Stripe"
+
+
+class TournamentFormat(models.TextChoices):
+    """Tournament format types."""
+    SINGLE_ELIMINATION = "single_elimination", "Single Elimination"
+    ROUND_ROBIN = "round_robin", "Round Robin"
+
+
+class TournamentStatus(models.TextChoices):
+    """Tournament lifecycle statuses."""
+    REGISTRATION = "registration", "Registration"
+    IN_PROGRESS = "in_progress", "In Progress"
+    COMPLETED = "completed", "Completed"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+class TournamentParticipantStatus(models.TextChoices):
+    """Statuses for tournament participants."""
+    REGISTERED = "registered", "Registered"
+    CHECKED_IN = "checked_in", "Checked In"
+    ELIMINATED = "eliminated", "Eliminated"
+    WINNER = "winner", "Winner"
+
+
+class TournamentRoundStatus(models.TextChoices):
+    """Statuses for tournament rounds."""
+    PENDING = "pending", "Pending"
+    IN_PROGRESS = "in_progress", "In Progress"
+    COMPLETED = "completed", "Completed"
+
+
+class TournamentMatchStatus(models.TextChoices):
+    """Statuses for tournament matches."""
+    SCHEDULED = "scheduled", "Scheduled"
+    IN_PROGRESS = "in_progress", "In Progress"
+    COMPLETED = "completed", "Completed"
