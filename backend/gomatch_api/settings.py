@@ -22,15 +22,15 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
 
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
-# Railway injects RAILWAY_PUBLIC_DOMAIN automatically
-RAILWAY_DOMAIN = os.environ.get("RAILWAY_PUBLIC_DOMAIN")
-if RAILWAY_DOMAIN:
-    ALLOWED_HOSTS.append(RAILWAY_DOMAIN)
+# Railway: auto-detect all Railway-provided domains
+for _var in ("RAILWAY_PUBLIC_DOMAIN", "RAILWAY_PRIVATE_DOMAIN"):
+    _domain = os.environ.get(_var)
+    if _domain and _domain not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_domain)
 
-# Also allow Railway private networking
-RAILWAY_PRIVATE = os.environ.get("RAILWAY_PRIVATE_DOMAIN")
-if RAILWAY_PRIVATE:
-    ALLOWED_HOSTS.append(RAILWAY_PRIVATE)
+# Fallback: if running on Railway, allow .railway.app domains
+if os.environ.get("RAILWAY_ENVIRONMENT"):
+    ALLOWED_HOSTS.append(".railway.app")
 
 
 # --------------------------------------------------------------------------
