@@ -7,3 +7,6 @@ django-filter
 drf-spectacular
 Pillow
 factory_boy
+gunicorn
+dj-database-url
+whitenoise

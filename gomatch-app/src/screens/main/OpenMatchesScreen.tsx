@@ -7,13 +7,18 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
 import { Colors } from "../../constants/colors";
 import { openMatchesService } from "../../services/openMatches";
 import { formatDate, formatTime } from "../../utils/helpers";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { EmptyState } from "../../components/EmptyState";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
+import { isNetworkError } from "../../utils/network";
 import type { OpenMatchListItem, Sport, SkillLevel } from "../../types";
 
 const LEVEL_LABELS: Record<SkillLevel, string> = {
@@ -49,6 +54,7 @@ export function OpenMatchesScreen() {
   const [sportFilter, setSportFilter] = useState<Sport | null>(null);
   const [levelFilter, setLevelFilter] = useState<SkillLevel | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const fetchMatches = useCallback(async () => {
     try {
@@ -57,8 +63,9 @@ export function OpenMatchesScreen() {
       if (levelFilter) params.required_level_min = levelFilter;
       const res = await openMatchesService.getOpenMatches(params as any);
       setMatches(res.results);
-    } catch {
-      // silently fail
+      setError(null);
+    } catch (err) {
+      setError(err);
     }
   }, [sportFilter, levelFilter]);
 
@@ -77,11 +84,11 @@ export function OpenMatchesScreen() {
     setJoiningId(match.id);
     try {
       await openMatchesService.joinOpenMatch(match.id);
-      Alert.alert("Rejoint !", "Tu as rejoint la session.");
+      Toast.show({ type: "success", text1: "Rejoint !", text2: "Tu as rejoint la session." });
       await fetchMatches();
     } catch (err: any) {
       const msg = err?.response?.data?.detail || "Impossible de rejoindre.";
-      Alert.alert("Erreur", msg);
+      Toast.show({ type: "error", text1: "Erreur", text2: msg });
     } finally {
       setJoiningId(null);
     }
@@ -172,6 +179,17 @@ export function OpenMatchesScreen() {
     );
   };
 
+  if (loading && matches.length === 0) {
+    return <LoadingScreen message="Chargement des sessions…" />;
+  }
+
+  if (error && matches.length === 0) {
+    if (isNetworkError(error)) {
+      return <NetworkError onRetry={() => { setLoading(true); fetchMatches().finally(() => setLoading(false)); }} />;
+    }
+    return <ErrorState message="Impossible de charger les sessions" onRetry={() => { setLoading(true); fetchMatches().finally(() => setLoading(false)); }} />;
+  }
+
   return (
     <View style={styles.container}>
       {/* ── Filters ── */}
@@ -222,20 +240,13 @@ export function OpenMatchesScreen() {
         renderItem={renderCard}
         ListEmptyComponent={
           !loading ? (
-            <View style={styles.empty}>
-              <Ionicons name="search-outline" size={48} color={Colors.BORDER} />
-              <Text style={styles.emptyTitle}>Aucune session ouverte</Text>
-              <Text style={styles.emptyText}>
-                Personne n'a publié de session pour le moment.
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyBtn}
-                onPress={() => navigation.navigate("CreateOpenMatch")}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.emptyBtnText}>Publier une session</Text>
-              </TouchableOpacity>
-            </View>
+            <EmptyState
+              icon="search-outline"
+              title="Aucune session ouverte"
+              subtitle="Personne n'a publié de session pour le moment."
+              actionLabel="Publier une session"
+              onAction={() => navigation.navigate("CreateOpenMatch")}
+            />
           ) : null
         }
       />

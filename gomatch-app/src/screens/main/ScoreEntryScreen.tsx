@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Colors } from "../../constants/colors";
 import { scoringService } from "../../services/scoring";
@@ -96,7 +97,7 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
             } catch (err: any) {
               const detail =
                 err?.response?.data?.detail || "Impossible d'envoyer le score.";
-              Alert.alert("Erreur", detail);
+              Toast.show({ type: "error", text1: "Erreur", text2: detail });
             } finally {
               setSending(false);
             }

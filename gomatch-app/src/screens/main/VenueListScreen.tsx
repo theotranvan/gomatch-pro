@@ -13,6 +13,11 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/colors";
 import { venuesService } from "../../services/venues";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { EmptyState } from "../../components/EmptyState";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
+import { isNetworkError } from "../../utils/network";
 import type { VenueListItem, Sport } from "../../types";
 
 const SPORT_FILTERS: { value: Sport | null; label: string }[] = [
@@ -45,6 +50,7 @@ export function VenueListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [sportFilter, setSportFilter] = useState<Sport | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const fetchVenues = useCallback(async () => {
     try {
@@ -53,8 +59,9 @@ export function VenueListScreen() {
       if (sportFilter) params.sport = sportFilter;
       const res = await venuesService.getVenues(params as any);
       setVenues(res.results);
-    } catch {
-      // silently fail
+      setError(null);
+    } catch (err) {
+      setError(err);
     }
   }, [search, sportFilter]);
 
@@ -125,6 +132,17 @@ export function VenueListScreen() {
       />
     </TouchableOpacity>
   );
+
+  if (loading && venues.length === 0) {
+    return <LoadingScreen message="Chargement des clubs…" />;
+  }
+
+  if (error && venues.length === 0) {
+    if (isNetworkError(error)) {
+      return <NetworkError onRetry={() => { setLoading(true); fetchVenues().finally(() => setLoading(false)); }} />;
+    }
+    return <ErrorState message="Impossible de charger les clubs" onRetry={() => { setLoading(true); fetchVenues().finally(() => setLoading(false)); }} />;
+  }
 
   return (
     <View style={styles.container}>
@@ -198,17 +216,11 @@ export function VenueListScreen() {
         renderItem={renderCard}
         ListEmptyComponent={
           !loading ? (
-            <View style={styles.empty}>
-              <Ionicons
-                name="location-outline"
-                size={48}
-                color={Colors.BORDER}
-              />
-              <Text style={styles.emptyTitle}>Aucun club trouvé</Text>
-              <Text style={styles.emptyText}>
-                Essaie une autre ville ou un autre sport.
-              </Text>
-            </View>
+            <EmptyState
+              icon="location-outline"
+              title="Aucun club trouvé"
+              subtitle="Essaie une autre ville ou un autre sport."
+            />
           ) : null
         }
       />

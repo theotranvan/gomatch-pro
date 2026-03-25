@@ -12,11 +12,16 @@ import {
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
 import { Colors } from "../../constants/colors";
 import { useAuth } from "../../hooks/useAuth";
 import { matchesService } from "../../services/matches";
 import { scoringService } from "../../services/scoring";
 import { formatDate, formatTime, getInitials } from "../../utils/helpers";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
+import { isNetworkError } from "../../utils/network";
 import type { HomeStackParamList } from "../../navigation/HomeStack";
 import type {
   Match,
@@ -53,13 +58,15 @@ export function MatchDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   const fetchMatch = useCallback(async () => {
     try {
       const data = await matchesService.getMatch(matchId);
       setMatch(data);
-    } catch {
-      Alert.alert("Erreur", "Impossible de charger le match.");
+      setError(null);
+    } catch (err) {
+      setError(err);
     }
   }, [matchId]);
 
@@ -113,10 +120,10 @@ export function MatchDetailScreen() {
     try {
       await matchesService.joinMatch(match.id);
       await fetchMatch();
-      Alert.alert("Rejoint !", "Tu as rejoint le match.");
+      Toast.show({ type: "success", text1: "Rejoint !", text2: "Tu as rejoint le match." });
     } catch (err: any) {
       const msg = err?.response?.data?.detail || "Impossible de rejoindre le match.";
-      Alert.alert("Erreur", msg);
+      Toast.show({ type: "error", text1: "Erreur", text2: msg });
     } finally {
       setActionLoading(false);
     }
@@ -128,9 +135,9 @@ export function MatchDetailScreen() {
     try {
       await scoringService.confirmScore(score.id);
       await fetchMatch();
-      Alert.alert("Score confirmé !", "Le score a été validé.");
+      Toast.show({ type: "success", text1: "Score confirmé !", text2: "Le score a été validé." });
     } catch (err: any) {
-      Alert.alert("Erreur", err?.response?.data?.detail || "Impossible de confirmer.");
+      Toast.show({ type: "error", text1: "Erreur", text2: err?.response?.data?.detail || "Impossible de confirmer." });
     } finally {
       setActionLoading(false);
     }
@@ -148,9 +155,9 @@ export function MatchDetailScreen() {
           try {
             await scoringService.disputeScore(score.id);
             await fetchMatch();
-            Alert.alert("Contesté", "Le score a été contesté.");
+            Toast.show({ type: "success", text1: "Contesté", text2: "Le score a été contesté." });
           } catch (err: any) {
-            Alert.alert("Erreur", err?.response?.data?.detail || "Impossible de contester.");
+            Toast.show({ type: "error", text1: "Erreur", text2: err?.response?.data?.detail || "Impossible de contester." });
           } finally {
             setActionLoading(false);
           }
@@ -162,20 +169,18 @@ export function MatchDetailScreen() {
   // ── Loading state ──
 
   if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.PRIMARY} />
-      </View>
-    );
+    return <LoadingScreen message="Chargement du match…" />;
+  }
+
+  if (error && !match) {
+    if (isNetworkError(error)) {
+      return <NetworkError onRetry={() => { setLoading(true); fetchMatch().finally(() => setLoading(false)); }} />;
+    }
+    return <ErrorState message="Match introuvable" onRetry={() => { setLoading(true); fetchMatch().finally(() => setLoading(false)); }} />;
   }
 
   if (!match) {
-    return (
-      <View style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={48} color={Colors.ERROR} />
-        <Text style={styles.errorText}>Match introuvable</Text>
-      </View>
-    );
+    return <ErrorState message="Match introuvable" />;
   }
 
   const statusCfg = STATUS_CONFIG[match.status];

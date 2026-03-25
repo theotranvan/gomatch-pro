@@ -15,9 +15,13 @@ import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
 import { MatchCard } from "../../components/MatchCard";
 import { OpenMatchCard } from "../../components/OpenMatchCard";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
 import { matchesService } from "../../services/matches";
 import { openMatchesService } from "../../services/openMatches";
 import { scoringService } from "../../services/scoring";
+import { isNetworkError } from "../../utils/network";
 import type { MatchListItem, OpenMatchListItem, Ranking, Sport } from "../../types";
 import type { HomeStackParamList } from "../../navigation/HomeStack";
 
@@ -28,40 +32,56 @@ export function HomeScreen() {
   const navigation = useNavigation<Nav>();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
   const [openMatches, setOpenMatches] = useState<OpenMatchListItem[]>([]);
   const [myMatches, setMyMatches] = useState<MatchListItem[]>([]);
   const [topRankings, setTopRankings] = useState<Ranking[]>([]);
   const [primarySport, setPrimarySport] = useState<Sport>("tennis");
 
   const fetchData = useCallback(async () => {
-    // Determine primary sport
-    const sport: Sport = profile?.level_padel && !profile?.level_tennis ? "padel" : "tennis";
-    setPrimarySport(sport);
+    try {
+      // Determine primary sport
+      const sport: Sport = profile?.level_padel && !profile?.level_tennis ? "padel" : "tennis";
+      setPrimarySport(sport);
 
-    const [openRes, myRes, rankRes] = await Promise.allSettled([
-      openMatchesService.getOpenMatches({ sport }),
-      matchesService.getMyMatches(),
-      scoringService.getRankings(sport),
-    ]);
+      const [openRes, myRes, rankRes] = await Promise.allSettled([
+        openMatchesService.getOpenMatches({ sport }),
+        matchesService.getMyMatches(),
+        scoringService.getRankings(sport),
+      ]);
 
-    if (openRes.status === "fulfilled") {
-      setOpenMatches(openRes.value.results.slice(0, 5));
-    }
-    if (myRes.status === "fulfilled") {
-      // Only upcoming (not completed/cancelled)
-      setMyMatches(
-        myRes.value.results.filter(
-          (m) => m.status !== "completed" && m.status !== "cancelled",
-        ),
-      );
-    }
-    if (rankRes.status === "fulfilled") {
-      setTopRankings(rankRes.value.slice(0, 3));
+      if (openRes.status === "fulfilled") {
+        setOpenMatches(openRes.value.results.slice(0, 5));
+      }
+      if (myRes.status === "fulfilled") {
+        setMyMatches(
+          myRes.value.results.filter(
+            (m) => m.status !== "completed" && m.status !== "cancelled",
+          ),
+        );
+      }
+      if (rankRes.status === "fulfilled") {
+        setTopRankings(rankRes.value.slice(0, 3));
+      }
+
+      // If ALL promises rejected, throw the first one
+      if (
+        openRes.status === "rejected" &&
+        myRes.status === "rejected" &&
+        rankRes.status === "rejected"
+      ) {
+        throw openRes.reason;
+      }
+      setError(null);
+    } catch (err) {
+      setError(err);
     }
   }, [profile]);
 
   useEffect(() => {
-    fetchData();
+    setLoading(true);
+    fetchData().finally(() => setLoading(false));
   }, [fetchData]);
 
   const onRefresh = useCallback(async () => {
@@ -69,6 +89,19 @@ export function HomeScreen() {
     await fetchData();
     setRefreshing(false);
   }, [fetchData]);
+
+  // ── Error / Loading states ──
+
+  if (loading) {
+    return <LoadingScreen message="Chargement…" />;
+  }
+
+  if (error && openMatches.length === 0 && myMatches.length === 0) {
+    if (isNetworkError(error)) {
+      return <NetworkError onRetry={() => { setLoading(true); fetchData().finally(() => setLoading(false)); }} />;
+    }
+    return <ErrorState message="Impossible de charger les données" onRetry={() => { setLoading(true); fetchData().finally(() => setLoading(false)); }} />;
+  }
 
   // ── Render helpers ──
 

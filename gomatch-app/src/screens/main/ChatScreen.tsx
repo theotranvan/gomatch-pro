@@ -14,6 +14,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { chatService } from "../../services/chat";
 import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { EmptyState } from "../../components/EmptyState";
 import type { ChatMessage } from "../../types";
 import type { ChatStackParamList } from "../../navigation/ChatStack";
 
@@ -246,11 +248,7 @@ export function ChatScreen({ route, navigation }: Props) {
   };
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.loadingText}>Chargement…</Text>
-      </View>
-    );
+    return <LoadingScreen message="Chargement des messages…" />;
   }
 
   return (
@@ -275,16 +273,11 @@ export function ChatScreen({ route, navigation }: Props) {
           ) : null
         }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="chatbubble-ellipses-outline"
-              size={48}
-              color={Colors.BORDER}
-            />
-            <Text style={styles.emptyText}>
-              Aucun message. Lancez la conversation !
-            </Text>
-          </View>
+          <EmptyState
+            icon="chatbubble-ellipses-outline"
+            title="Aucun message"
+            subtitle="Lancez la conversation !"
+          />
         }
       />
 

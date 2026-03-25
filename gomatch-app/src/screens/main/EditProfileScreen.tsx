@@ -9,6 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import Toast from "react-native-toast-message";
 import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
 import { Input } from "../../components/Input";
@@ -95,6 +96,7 @@ export function EditProfileScreen() {
         preferred_play_mode: playMode,
       });
 
+      Toast.show({ type: "success", text1: "Profil mis à jour", text2: "Tes modifications ont été enregistrées." });
       navigation.goBack();
     } catch {
       setError("Impossible de sauvegarder le profil.");

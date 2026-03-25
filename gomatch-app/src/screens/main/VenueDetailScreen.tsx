@@ -6,13 +6,16 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
   Linking,
 } from "react-native";
 import { useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/colors";
 import { venuesService } from "../../services/venues";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
+import { isNetworkError } from "../../utils/network";
 import type { Venue, Court } from "../../types";
 
 const SURFACE_LABELS: Record<string, string> = {
@@ -45,29 +48,35 @@ export function VenueDetailScreen() {
 
   const [venue, setVenue] = useState<Venue | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
 
-  useEffect(() => {
+  const fetchVenue = () => {
+    setLoading(true);
+    setError(null);
     venuesService
       .getVenue(venueId)
       .then(setVenue)
+      .catch((err) => setError(err))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchVenue();
   }, [venueId]);
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.PRIMARY} />
-      </View>
-    );
+    return <LoadingScreen message="Chargement du club…" />;
+  }
+
+  if (error && !venue) {
+    if (isNetworkError(error)) {
+      return <NetworkError onRetry={fetchVenue} />;
+    }
+    return <ErrorState message="Club introuvable" onRetry={fetchVenue} />;
   }
 
   if (!venue) {
-    return (
-      <View style={styles.center}>
-        <Ionicons name="alert-circle-outline" size={48} color={Colors.BORDER} />
-        <Text style={styles.errorText}>Club introuvable</Text>
-      </View>
-    );
+    return <ErrorState message="Club introuvable" />;
   }
 
   const tennisCourts = venue.courts.filter((c) => c.sport === "tennis");

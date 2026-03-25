@@ -6,13 +6,16 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
 } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/colors";
 import { playersService } from "../../services/players";
 import { getInitials } from "../../utils/helpers";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
+import { isNetworkError } from "../../utils/network";
 import type { PlayerProfile, Ranking } from "../../types";
 import type { HomeStackParamList } from "../../navigation/HomeStack";
 
@@ -39,6 +42,7 @@ export function PlayerProfileScreen() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -53,6 +57,12 @@ export function PlayerProfileScreen() {
 
       if (rankingsRes.status === "fulfilled") {
         setRankings(rankingsRes.value);
+      }
+
+      if (playerRes.status === "rejected") {
+        setError(playerRes.reason);
+      } else {
+        setError(null);
       }
     } finally {
       setLoading(false);
@@ -71,20 +81,18 @@ export function PlayerProfileScreen() {
 
   // ── Loading ─────────────────────────────────────────────────────────────
   if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.PRIMARY} />
-      </View>
-    );
+    return <LoadingScreen message="Chargement du profil…" />;
+  }
+
+  if (error && !player) {
+    if (isNetworkError(error)) {
+      return <NetworkError onRetry={() => { setLoading(true); fetchData(); }} />;
+    }
+    return <ErrorState message="Joueur introuvable" onRetry={() => { setLoading(true); fetchData(); }} />;
   }
 
   if (!player) {
-    return (
-      <View style={styles.centered}>
-        <Ionicons name="person-outline" size={64} color={Colors.BORDER} />
-        <Text style={styles.emptyTitle}>Joueur introuvable</Text>
-      </View>
-    );
+    return <ErrorState message="Joueur introuvable" />;
   }
 
   // Stats computation

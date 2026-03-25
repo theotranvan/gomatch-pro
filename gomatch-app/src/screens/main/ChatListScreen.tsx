@@ -12,6 +12,11 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import { chatService } from "../../services/chat";
 import { Colors } from "../../constants/colors";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { EmptyState } from "../../components/EmptyState";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
+import { isNetworkError } from "../../utils/network";
 import type { ChatRoom } from "../../types";
 import type { ChatStackParamList } from "../../navigation/ChatStack";
 
@@ -64,6 +69,7 @@ export function ChatListScreen() {
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   const fetchRooms = useCallback(async () => {
     try {
@@ -74,8 +80,9 @@ export function ChatListScreen() {
         return new Date(dateB).getTime() - new Date(dateA).getTime();
       });
       setRooms(sorted);
-    } catch {
-      // silent
+      setError(null);
+    } catch (err) {
+      setError(err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -164,11 +171,14 @@ export function ChatListScreen() {
   };
 
   if (loading) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.loadingText}>Chargement…</Text>
-      </View>
-    );
+    return <LoadingScreen message="Chargement des conversations…" />;
+  }
+
+  if (error && rooms.length === 0) {
+    if (isNetworkError(error)) {
+      return <NetworkError onRetry={() => { setLoading(true); fetchRooms(); }} />;
+    }
+    return <ErrorState message="Impossible de charger les conversations" onRetry={() => { setLoading(true); fetchRooms(); }} />;
   }
 
   return (
@@ -179,17 +189,11 @@ export function ChatListScreen() {
         renderItem={renderItem}
         contentContainerStyle={rooms.length === 0 ? styles.emptyContainer : undefined}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="chatbubbles-outline"
-              size={64}
-              color={Colors.BORDER}
-            />
-            <Text style={styles.emptyTitle}>Aucune conversation</Text>
-            <Text style={styles.emptySubtitle}>
-              Rejoignez un match pour commencer à discuter
-            </Text>
-          </View>
+          <EmptyState
+            icon="chatbubbles-outline"
+            title="Aucune conversation"
+            subtitle="Rejoignez un match pour commencer à discuter"
+          />
         }
         refreshControl={
           <RefreshControl

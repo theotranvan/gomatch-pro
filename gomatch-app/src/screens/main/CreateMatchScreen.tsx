@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
 import { Colors } from "../../constants/colors";
 import { matchesService, CreateMatchData } from "../../services/matches";
 import type { Sport, MatchType, PlayMode } from "../../types";
@@ -59,7 +59,7 @@ export function CreateMatchScreen() {
     if (!day || !month || !year || isNaN(d) || isNaN(m) || isNaN(y)) {
       return "Date invalide";
     }
-    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 2025) {
+    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 2025 || y > new Date().getFullYear() + 1) {
       return "Date invalide";
     }
     const date = new Date(y, m - 1, d);
@@ -99,16 +99,11 @@ export function CreateMatchScreen() {
 
     try {
       const match = await matchesService.createMatch(data);
-      Alert.alert("Match créé !", "Ton match a bien été créé.", [
-        {
-          text: "Voir le match",
-          onPress: () =>
-            navigation.navigate("Home", {
-              screen: "MatchDetail",
-              params: { matchId: match.id },
-            }),
-        },
-      ]);
+      Toast.show({ type: "success", text1: "Match créé !", text2: "Ton match a bien été créé." });
+      navigation.navigate("Home", {
+        screen: "MatchDetail",
+        params: { matchId: match.id },
+      });
     } catch (err: any) {
       const msg =
         err?.response?.data?.detail ||

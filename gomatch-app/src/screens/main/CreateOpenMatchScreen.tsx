@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
 import { Colors } from "../../constants/colors";
 import {
   openMatchesService,
@@ -74,7 +74,7 @@ export function CreateOpenMatchScreen() {
     const y = parseInt(year, 10);
     if (!day || !month || !year || isNaN(d) || isNaN(m) || isNaN(y))
       return "Date invalide";
-    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 2025) return "Date invalide";
+    if (d < 1 || d > 31 || m < 1 || m > 12 || y < 2025 || y > new Date().getFullYear() + 1) return "Date invalide";
     const date = new Date(y, m - 1, d);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -90,7 +90,7 @@ export function CreateOpenMatchScreen() {
       const em = parseInt(expMonth, 10);
       const ey = parseInt(expYear, 10);
       if (isNaN(ed) || isNaN(em) || isNaN(ey)) return "Date d'expiration invalide";
-      if (ed < 1 || ed > 31 || em < 1 || em > 12 || ey < 2025)
+      if (ed < 1 || ed > 31 || em < 1 || em > 12 || ey < 2025 || ey > new Date().getFullYear() + 1)
         return "Date d'expiration invalide";
       const expDate = new Date(ey, em - 1, ed);
       if (expDate >= date) return "L'expiration doit être avant la date du match";
@@ -132,9 +132,8 @@ export function CreateOpenMatchScreen() {
 
     try {
       await openMatchesService.createOpenMatch(data);
-      Alert.alert("Session publiée !", "Ta session ouverte est visible.", [
-        { text: "OK", onPress: () => navigation.goBack() },
-      ]);
+      Toast.show({ type: "success", text1: "Session publiée !", text2: "Ta session ouverte est visible." });
+      navigation.goBack();
     } catch (err: any) {
       const msg =
         err?.response?.data?.detail ||

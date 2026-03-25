@@ -14,6 +14,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/colors";
 import { playersService, PlayerFilters } from "../../services/players";
 import { getInitials } from "../../utils/helpers";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { EmptyState } from "../../components/EmptyState";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
+import { isNetworkError } from "../../utils/network";
 import type { PlayerProfile, Sport, SkillLevel, PlayMode } from "../../types";
 
 // ── Filter options ───────────────────────────────────────────────────────────
@@ -70,6 +75,7 @@ export function PlayerSearchScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -96,6 +102,9 @@ export function PlayerSearchScreen() {
         const data = await playersService.getPlayers(filters);
         setPlayers(append ? (prev) => [...prev, ...data.results] : data.results);
         setHasMore(data.next !== null);
+        setError(null);
+      } catch (err) {
+        if (!append) setError(err);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -220,14 +229,18 @@ export function PlayerSearchScreen() {
   // ── Empty state ─────────────────────────────────────────────────────────
   function renderEmpty() {
     if (loading) return null;
+    if (error && players.length === 0) {
+      if (isNetworkError(error)) {
+        return <NetworkError onRetry={() => { setLoading(true); fetchPlayers(1); }} />;
+      }
+      return <ErrorState message="Impossible de charger les joueurs" onRetry={() => { setLoading(true); fetchPlayers(1); }} />;
+    }
     return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="people-outline" size={64} color={Colors.BORDER} />
-        <Text style={styles.emptyTitle}>Aucun joueur trouvé</Text>
-        <Text style={styles.emptySubtitle}>
-          Essaie avec d'autres critères de recherche
-        </Text>
-      </View>
+      <EmptyState
+        icon="people-outline"
+        title="Aucun joueur trouvé"
+        subtitle="Essaie avec d'autres critères de recherche"
+      />
     );
   }
 
@@ -295,11 +308,7 @@ export function PlayerSearchScreen() {
 
       {/* Loading */}
       {loading ? (
-        <ActivityIndicator
-          size="large"
-          color={Colors.PRIMARY}
-          style={styles.loader}
-        />
+        <LoadingScreen message="Recherche des joueurs…" />
       ) : (
         <FlatList
           data={players}

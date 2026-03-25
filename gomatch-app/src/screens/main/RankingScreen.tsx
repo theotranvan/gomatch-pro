@@ -6,12 +6,16 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
 import { scoringService } from "../../services/scoring";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { EmptyState } from "../../components/EmptyState";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
+import { isNetworkError } from "../../utils/network";
 import type { Ranking, Sport } from "../../types";
 
 const SPORTS: { key: Sport; label: string }[] = [
@@ -34,6 +38,7 @@ export function RankingScreen() {
   const [myRanking, setMyRanking] = useState<Ranking | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   const fetchRankings = useCallback(async () => {
     try {
@@ -51,6 +56,12 @@ export function RankingScreen() {
         setMyRanking(myRank);
       } else {
         setMyRanking(null);
+      }
+
+      if (all.status === "rejected") {
+        setError(all.reason);
+      } else {
+        setError(null);
       }
     } finally {
       setLoading(false);
@@ -82,16 +93,24 @@ export function RankingScreen() {
 
   // ── Empty state ──
   if (!loading && rankings.length === 0 && !myRanking) {
+    if (error) {
+      return (
+        <View style={styles.container}>
+          {renderTabs()}
+          {isNetworkError(error)
+            ? <NetworkError onRetry={() => { setLoading(true); fetchRankings(); }} />
+            : <ErrorState message="Impossible de charger le classement" onRetry={() => { setLoading(true); fetchRankings(); }} />}
+        </View>
+      );
+    }
     return (
       <View style={styles.container}>
         {renderTabs()}
-        <View style={styles.emptyContainer}>
-          <Ionicons name="trophy-outline" size={64} color={Colors.BORDER} />
-          <Text style={styles.emptyTitle}>Pas encore de classement</Text>
-          <Text style={styles.emptySubtitle}>
-            Joue ton premier match compétition !
-          </Text>
-        </View>
+        <EmptyState
+          icon="trophy-outline"
+          title="Pas encore de classement"
+          subtitle="Joue ton premier match compétition !"
+        />
       </View>
     );
   }
@@ -197,9 +216,7 @@ export function RankingScreen() {
       {renderTabs()}
 
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.PRIMARY} />
-        </View>
+        <LoadingScreen message="Chargement du classement…" />
       ) : (
         <FlatList
           data={rankings}

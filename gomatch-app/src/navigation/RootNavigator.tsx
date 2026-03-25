@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
 import { AuthStack } from "./AuthStack";
 import { MainTabs } from "./MainTabs";
 import { OnboardingScreen } from "../screens/auth/OnboardingScreen";
@@ -15,23 +16,27 @@ function isProfileComplete(profile: { first_name: string; last_name: string } | 
 export function RootNavigator() {
   const { user, profile, isLoading, isAuthenticated } = useAuth();
 
+  const onLayoutRootView = useCallback(async () => {
+    if (!isLoading) {
+      await SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
+
   if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.BACKGROUND }}>
-        <ActivityIndicator size="large" color={Colors.PRIMARY} />
-      </View>
-    );
+    return null;
   }
 
   return (
-    <NavigationContainer>
-      {!isAuthenticated ? (
-        <AuthStack />
-      ) : !isProfileComplete(profile) ? (
-        <OnboardingScreen />
-      ) : (
-        <MainTabs />
-      )}
-    </NavigationContainer>
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      <NavigationContainer>
+        {!isAuthenticated ? (
+          <AuthStack />
+        ) : !isProfileComplete(profile) ? (
+          <OnboardingScreen />
+        ) : (
+          <MainTabs />
+        )}
+      </NavigationContainer>
+    </View>
   );
 }

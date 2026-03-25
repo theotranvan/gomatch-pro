@@ -49,3 +49,8 @@ gomatch-app/node_modules/
 *.orig.*
 web-build/
 dist/
+
+# Test output files
+test_*.py
+test_*.txt
+*_output.txt

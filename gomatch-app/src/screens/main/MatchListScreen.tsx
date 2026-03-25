@@ -9,10 +9,14 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/colors";
 import { MatchCard } from "../../components/MatchCard";
+import { LoadingScreen } from "../../components/LoadingScreen";
+import { EmptyState } from "../../components/EmptyState";
+import { NetworkError } from "../../components/NetworkError";
+import { ErrorState } from "../../components/ErrorState";
 import { matchesService } from "../../services/matches";
+import { isNetworkError } from "../../utils/network";
 import type { MatchListItem, Sport } from "../../types";
 import type { HomeStackParamList } from "../../navigation/HomeStack";
 
@@ -39,13 +43,15 @@ export function MatchListScreen() {
   const [matches, setMatches] = useState<MatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<unknown>(null);
 
   const fetchMatches = useCallback(async () => {
     try {
       const res = await matchesService.getMyMatches();
       setMatches(res.results);
-    } catch {
-      // silently fail
+      setError(null);
+    } catch (err) {
+      setError(err);
     }
   }, []);
 
@@ -90,6 +96,17 @@ export function MatchListScreen() {
       ? da.getTime() - db.getTime()
       : db.getTime() - da.getTime();
   });
+
+  if (loading) {
+    return <LoadingScreen message="Chargement des matchs…" />;
+  }
+
+  if (error && matches.length === 0) {
+    if (isNetworkError(error)) {
+      return <NetworkError onRetry={() => { setLoading(true); fetchMatches().finally(() => setLoading(false)); }} />;
+    }
+    return <ErrorState message="Impossible de charger les matchs" onRetry={() => { setLoading(true); fetchMatches().finally(() => setLoading(false)); }} />;
+  }
 
   return (
     <View style={styles.container}>
@@ -153,19 +170,19 @@ export function MatchListScreen() {
           />
         )}
         ListEmptyComponent={
-          !loading ? (
-            <View style={styles.empty}>
-              <Ionicons name="tennisball-outline" size={48} color={Colors.BORDER} />
-              <Text style={styles.emptyTitle}>Aucun match</Text>
-              <Text style={styles.emptyText}>
-                {tab === "upcoming"
-                  ? "Tu n'as pas de match à venir.\nCrée-en un !"
-                  : tab === "past"
-                    ? "Aucun match passé pour le moment."
-                    : "Aucun match trouvé."}
-              </Text>
-            </View>
-          ) : null
+          <EmptyState
+            icon="tennisball-outline"
+            title="Aucun match"
+            subtitle={
+              tab === "upcoming"
+                ? "Tu n'as pas de match à venir."
+                : tab === "past"
+                  ? "Aucun match passé pour le moment."
+                  : "Aucun match trouvé."
+            }
+            actionLabel={tab === "upcoming" ? "Créer un match" : undefined}
+            onAction={tab === "upcoming" ? () => navigation.getParent()?.navigate("CreateMatch") : undefined}
+          />
         }
       />
     </View>
