@@ -19,4 +19,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend project
 COPY backend/ .
 
-EXPOSE 8000
+CMD python manage.py migrate --noinput ; python manage.py collectstatic --noinput ; exec gunicorn gomatch_api.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 120 --access-logfile - --error-logfile -
