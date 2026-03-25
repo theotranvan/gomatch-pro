@@ -1,0 +1,29 @@
+databases:
+  - name: gomatch-db
+    plan: free
+    databaseName: gomatch_db
+
+services:
+  - type: web
+    plan: free
+    name: gomatch-api
+    runtime: python
+    region: frankfurt
+    rootDir: backend
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn gomatch_api.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gomatch-db
+          property: connectionURI
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SETTINGS_MODULE
+        value: gomatch_api.settings
+      - key: RENDER
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.12.8"

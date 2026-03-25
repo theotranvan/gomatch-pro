@@ -20,8 +20,7 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in ("true", "1", "yes")
 
-if os.environ.get("RAILWAY_ENVIRONMENT"):
-    # On Railway: the proxy handles domain routing, accept all hosts
+if os.environ.get("RENDER") or os.environ.get("RAILWAY_ENVIRONMENT"):
     ALLOWED_HOSTS = ["*"]
 else:
     ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
