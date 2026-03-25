@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend project
 COPY backend/ .
 
-# Make entrypoint executable
-RUN chmod +x entrypoint.sh
+# Fix Windows line endings and make entrypoint executable
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
 
 # Expose port
 EXPOSE 8000
