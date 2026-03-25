@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+export DJANGO_SETTINGS_MODULE=${DJANGO_SETTINGS_MODULE:-gomatch_api.settings}
+
 echo "=== GoMatch API Starting ==="
 echo "PORT=$PORT"
 echo "RAILWAY_ENVIRONMENT=$RAILWAY_ENVIRONMENT"
