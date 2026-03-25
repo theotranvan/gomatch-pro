@@ -6,17 +6,18 @@ ENV DJANGO_SETTINGS_MODULE=gomatch_api.settings
 
 WORKDIR /app
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend project
 COPY backend/ .
 
-CMD python manage.py migrate --noinput ; python manage.py collectstatic --noinput ; exec gunicorn gomatch_api.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --timeout 120 --access-logfile - --error-logfile -
+RUN python manage.py collectstatic --noinput 2>/dev/null || true
+
+EXPOSE 8000
+
+CMD ["gunicorn", "gomatch_api.wsgi:application", "--bind", "0.0.0.0:8000"]
