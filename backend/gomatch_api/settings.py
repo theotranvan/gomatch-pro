@@ -274,7 +274,8 @@ LOGGING = {
 # --------------------------------------------------------------------------
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "True").lower() in (
+    # Railway/Render handle SSL at the proxy level, so disable Django's SSL redirect
+    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() in (
         "true",
         "1",
     )
