@@ -703,3 +703,109 @@ class RankingCacheTest(APITestCase):
                 f"Expected cache speedup > 2x, got {speedup:.1f}x "
                 f"(1st={t1_duration*1000:.1f}ms, 2nd={t2_duration*1000:.1f}ms)",
             )
+
+
+class CeleryAsyncScoreTest(APITestCase):
+    """Verify score submission is instant and push notification is dispatched via Celery.
+
+    1. Submit a score → response is fast (< 500ms, no push blocking).
+    2. send_push_notification_task.delay was called (task dispatched).
+    """
+
+    def setUp(self):
+        anon = APIClient()
+        self.alice_data = _register(anon, "celery_alice@test.ch")
+        self.bob_data = _register(anon, "celery_bob@test.ch")
+        self.charlie_data = _register(anon, "celery_charlie@test.ch")
+        self.diana_data = _register(anon, "celery_diana@test.ch")
+
+        self.alice = _auth_client(self.alice_data["tokens"]["access"])
+        self.bob = _auth_client(self.bob_data["tokens"]["access"])
+        self.charlie = _auth_client(self.charlie_data["tokens"]["access"])
+        self.diana = _auth_client(self.diana_data["tokens"]["access"])
+
+        for client, first, last in [
+            (self.alice, "Alice", "Test"),
+            (self.bob, "Bob", "Test"),
+            (self.charlie, "Charlie", "Test"),
+            (self.diana, "Diana", "Test"),
+        ]:
+            client.patch(
+                "/api/auth/profile/",
+                {
+                    "first_name": first,
+                    "last_name": last,
+                    "level_padel": SkillLevel.INTERMEDIATE,
+                    "level_tennis": SkillLevel.INTERMEDIATE,
+                    "date_of_birth": "1998-01-01",
+                },
+                format="json",
+            )
+
+        # Create match and fill it
+        expires_at = (timezone.now() + timedelta(days=7)).isoformat()
+        scheduled_date = (date.today() + timedelta(days=3)).isoformat()
+        resp = self.alice.post(
+            "/api/matches/open/create/",
+            {
+                "sport": SportType.PADEL,
+                "match_type": "doubles",
+                "play_mode": PlayMode.COMPETITIVE,
+                "scheduled_date": scheduled_date,
+                "scheduled_time": "18:00",
+                "required_level_min": SkillLevel.BEGINNER,
+                "required_level_max": SkillLevel.ADVANCED,
+                "description": "Celery async test match",
+                "expires_at": expires_at,
+            },
+            format="json",
+        )
+        self.match_id = resp.data["match_id"]
+        open_match_id = resp.data["id"]
+
+        for client in [self.bob, self.charlie, self.diana]:
+            client.post(f"/api/matches/open/{open_match_id}/join/", format="json")
+
+        # Set match to COMPLETED
+        match = Match.objects.get(pk=self.match_id)
+        match.status = MatchStatus.COMPLETED
+        match.save(update_fields=["status"])
+
+    def test_score_submit_is_instant_and_task_dispatched(self):
+        """Score submission returns instantly; push task is dispatched via Celery."""
+        from unittest.mock import patch
+
+        with patch("scoring.services.send_push_notification_task") as mock_task:
+            t_start = time.perf_counter()
+            resp = self.alice.post(
+                f"/api/matches/{self.match_id}/score/",
+                {
+                    "sets": [
+                        {"team_a": 6, "team_b": 4},
+                        {"team_a": 6, "team_b": 3},
+                    ],
+                },
+                format="json",
+            )
+            t_duration = time.perf_counter() - t_start
+
+        # 1. Response is successful
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
+        self.assertEqual(resp.data["status"], ScoreStatus.PENDING)
+
+        # 2. Response was fast (< 500ms — no blocking push)
+        self.assertLess(
+            t_duration,
+            0.5,
+            f"Score submission took {t_duration*1000:.0f}ms — should be < 500ms "
+            f"(push notification must not block the request).",
+        )
+
+        # 3. send_push_notification_task.delay was called (async dispatch)
+        mock_task.delay.assert_called_once()
+        call_args = mock_task.delay.call_args
+        # First arg: list of user_id strings (other participants)
+        self.assertIsInstance(call_args[0][0], list)
+        self.assertTrue(len(call_args[0][0]) > 0, "Should notify at least 1 participant")
+        # Second arg: title
+        self.assertEqual(call_args[0][1], "Score soumis")
