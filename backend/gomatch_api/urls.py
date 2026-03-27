@@ -46,10 +46,16 @@ def health_check(request):
     except Exception as e:
         components["celery"] = f"error: {e.__class__.__name__}"
 
+    has_error = any(v.startswith("error") for v in components.values())
     all_ok = all(v == "ok" for v in components.values())
-    status_code = 200 if all_ok else 503
+    if has_error:
+        status_code, status_label = 503, "error"
+    elif all_ok:
+        status_code, status_label = 200, "ok"
+    else:
+        status_code, status_label = 200, "degraded"
     return JsonResponse(
-        {"status": "ok" if all_ok else "degraded", "components": components},
+        {"status": status_label, "components": components},
         status=status_code,
     )
 
@@ -80,4 +86,12 @@ urlpatterns = [
 
 if settings.DEBUG:
     import debug_toolbar
-    urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns
+
+    def sentry_test(request):
+        """Temporary endpoint to verify Sentry captures errors. Remove after testing."""
+        _ = 1 / 0
+
+    urlpatterns = [
+        path("__debug__/", include(debug_toolbar.urls)),
+        path("api/sentry-test/", sentry_test, name="sentry-test"),
+    ] + urlpatterns

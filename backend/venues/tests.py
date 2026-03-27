@@ -55,6 +55,9 @@ class VenueListAPITests(TestCase):
             password="testpass123",
         )
         self.client.force_authenticate(user=self.user)
+        # Clear venue cache to avoid stale data between tests
+        from django.core.cache import cache
+        cache.delete("venues_active")
 
         # Venue 1: Genève, tennis
         self.venue_geneva = Venue.objects.create(

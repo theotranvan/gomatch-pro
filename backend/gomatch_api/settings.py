@@ -158,37 +158,19 @@ else:
 
 
 # --------------------------------------------------------------------------
-# Database
+# Database — PostgreSQL only (no SQLite)
 # --------------------------------------------------------------------------
 
-if os.environ.get("DATABASE_URL"):
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=os.environ.get("DATABASE_URL"),
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
-    }
-elif os.environ.get("DB_ENGINE", "sqlite") == "postgresql":
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ.get("DB_NAME", "gomatch_db"),
-            "USER": os.environ.get("DB_USER", "postgres"),
-            "PASSWORD": os.environ.get("DB_PASSWORD", "postgres"),
-            "HOST": os.environ.get("DB_HOST", "localhost"),
-            "PORT": os.environ.get("DB_PORT", "5432"),
-            "CONN_MAX_AGE": 600,
-            "CONN_HEALTH_CHECKS": True,
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+DATABASES = {
+    "default": dj_database_url.config(
+        default=os.environ.get(
+            "DATABASE_URL",
+            "postgresql://gomatch_user:gomatch_pass@localhost:5432/gomatch_db",
+        ),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
 
 
 # --------------------------------------------------------------------------
@@ -257,8 +239,8 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "20/min",
-        "user": "100/min",
+        "anon": "2000/min" if DEBUG else "20/min",
+        "user": "5000/min" if DEBUG else "100/min",
     },
 }
 
