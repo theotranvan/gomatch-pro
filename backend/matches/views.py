@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Count, Q
 from drf_spectacular.utils import extend_schema
 
 from core.enums import MatchStatus, ParticipantRole, ParticipantStatus
@@ -64,7 +65,12 @@ class MatchListView(generics.ListAPIView):
 
     def get_queryset(self):
         # Optimized: 3 queries (matches + participants + profiles) instead of N+1
-        return Match.objects.select_related(
+        return Match.objects.annotate(
+            _current_participants_count=Count(
+                "participants",
+                filter=Q(participants__status=ParticipantStatus.ACCEPTED),
+            )
+        ).select_related(
             "created_by__profile"
         ).prefetch_related(
             "participants__player"
@@ -84,7 +90,12 @@ class MatchDetailView(generics.RetrieveAPIView):
 
     def get_queryset(self):
         # Optimized: 4 queries (match + creator + participants + score) instead of N+1
-        return Match.objects.select_related(
+        return Match.objects.annotate(
+            _current_participants_count=Count(
+                "participants",
+                filter=Q(participants__status=ParticipantStatus.ACCEPTED),
+            )
+        ).select_related(
             "created_by__profile"
         ).prefetch_related("participants__player__user", "score")
 
@@ -157,9 +168,14 @@ class MyMatchesView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Optimized: 3 queries (matches + participants + profiles) instead of N+1
+        # Optimized: 3 queries instead of N+1
         return Match.objects.filter(
             participants__player=self.request.user.profile
+        ).annotate(
+            _current_participants_count=Count(
+                "participants",
+                filter=Q(participants__status=ParticipantStatus.ACCEPTED),
+            )
         ).select_related(
             "created_by__profile"
         ).prefetch_related(
@@ -272,6 +288,12 @@ class OpenMatchListView(generics.ListAPIView):
             OpenMatch.objects.filter(
                 match__status=MatchStatus.OPEN,
                 expires_at__gt=timezone.now(),
+            )
+            .annotate(
+                _current_participants_count=Count(
+                    "match__participants",
+                    filter=Q(match__participants__status=ParticipantStatus.ACCEPTED),
+                )
             )
             .select_related("match__created_by__profile")
             .prefetch_related("match__participants__player")

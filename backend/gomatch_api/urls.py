@@ -2,6 +2,7 @@
 gomatch_api URL Configuration
 """
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
@@ -50,3 +51,7 @@ urlpatterns = [
     path("api/tournaments/", include("competitions.urls")),
     path("api/events/", include("events.urls")),
 ]
+
+if settings.DEBUG:
+    import debug_toolbar
+    urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns

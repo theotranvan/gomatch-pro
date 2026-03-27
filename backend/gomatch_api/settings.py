@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "cloudinary_storage",
     "channels",
     "django_celery_beat",
+    # Dev tools
+    *([ "debug_toolbar" ] if DEBUG else []),
     # Local apps
     "core",
     "accounts",
@@ -65,6 +67,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    *([ "debug_toolbar.middleware.DebugToolbarMiddleware" ] if DEBUG else []),
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -274,6 +277,12 @@ SPECTACULAR_SETTINGS = {
 # --------------------------------------------------------------------------
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # Only allow all origins in development
+
+# --------------------------------------------------------------------------
+# Django Debug Toolbar
+# --------------------------------------------------------------------------
+
+INTERNAL_IPS = ["127.0.0.1"]
 
 CORS_ALLOWED_ORIGINS = [
     origin.strip()

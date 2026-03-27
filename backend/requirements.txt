@@ -20,5 +20,6 @@ channels_redis
 daphne
 celery
 django-celery-beat
+django-debug-toolbar
 redis
 supervisor

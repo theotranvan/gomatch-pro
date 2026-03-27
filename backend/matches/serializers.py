@@ -56,6 +56,9 @@ class MatchListSerializer(serializers.ModelSerializer):
         return obj.created_by.profile.display_name
 
     def get_current_participants_count(self, obj):
+        # Use annotation when available (list views), fallback to property
+        if hasattr(obj, '_current_participants_count'):
+            return obj._current_participants_count
         return obj.current_participants_count
 
 
@@ -92,6 +95,8 @@ class MatchDetailSerializer(serializers.ModelSerializer):
         return obj.created_by.profile.display_name
 
     def get_current_participants_count(self, obj):
+        if hasattr(obj, '_current_participants_count'):
+            return obj._current_participants_count
         return obj.current_participants_count
 
 
@@ -130,7 +135,7 @@ class OpenMatchListSerializer(serializers.ModelSerializer):
     scheduled_date = serializers.DateField(source="match.scheduled_date")
     scheduled_time = serializers.TimeField(source="match.scheduled_time")
     max_participants = serializers.IntegerField(source="match.max_participants")
-    spots_left = serializers.IntegerField(read_only=True)
+    spots_left = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -156,6 +161,11 @@ class OpenMatchListSerializer(serializers.ModelSerializer):
     def get_created_by_name(self, obj):
         return obj.match.created_by.profile.display_name
 
+    def get_spots_left(self, obj):
+        if hasattr(obj, '_current_participants_count'):
+            return obj.match.max_participants - obj._current_participants_count
+        return obj.spots_left
+
 
 class OpenMatchDetailSerializer(serializers.ModelSerializer):
     """Full serializer for open match detail with nested match + participants."""
@@ -167,7 +177,7 @@ class OpenMatchDetailSerializer(serializers.ModelSerializer):
     scheduled_date = serializers.DateField(source="match.scheduled_date")
     scheduled_time = serializers.TimeField(source="match.scheduled_time")
     max_participants = serializers.IntegerField(source="match.max_participants")
-    spots_left = serializers.IntegerField(read_only=True)
+    spots_left = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     current_participants_count = serializers.SerializerMethodField()
     participants = serializers.SerializerMethodField()
@@ -199,7 +209,14 @@ class OpenMatchDetailSerializer(serializers.ModelSerializer):
     def get_created_by_name(self, obj):
         return obj.match.created_by.profile.display_name
 
+    def get_spots_left(self, obj):
+        if hasattr(obj, '_current_participants_count'):
+            return obj.match.max_participants - obj._current_participants_count
+        return obj.spots_left
+
     def get_current_participants_count(self, obj):
+        if hasattr(obj, '_current_participants_count'):
+            return obj._current_participants_count
         return obj.match.current_participants_count
 
     def get_participants(self, obj):
