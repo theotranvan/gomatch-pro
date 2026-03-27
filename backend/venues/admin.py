@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.core.cache import cache
 from django.db.models import Count
 
 from venues.models import Court, TimeSlot, Venue
@@ -59,12 +60,22 @@ class VenueAdmin(admin.ModelAdmin):
     @admin.action(description="Activate selected venues")
     def activate_venues(self, request, queryset):
         updated = queryset.update(is_active=True)
+        cache.delete("venues_active")
         self.message_user(request, f"{updated} venue(s) activated.")
 
     @admin.action(description="Deactivate selected venues")
     def deactivate_venues(self, request, queryset):
         updated = queryset.update(is_active=False)
+        cache.delete("venues_active")
         self.message_user(request, f"{updated} venue(s) deactivated.")
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        cache.delete("venues_active")
+
+    def delete_model(self, request, obj):
+        super().delete_model(request, obj)
+        cache.delete("venues_active")
 
 
 @admin.register(Court)

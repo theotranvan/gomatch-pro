@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from rest_framework import generics, permissions, serializers as drf_serializers, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
@@ -260,6 +261,16 @@ class PlayerListView(generics.ListAPIView):
         return PlayerProfile.objects.select_related("user").order_by(
             "last_name", "first_name"
         )
+
+    def list(self, request, *args, **kwargs):
+        cache_key = "players_list"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached, headers={"X-Cache": "HIT"})
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=180)
+        response["X-Cache"] = "MISS"
+        return response
 
 
 @extend_schema(tags=["Players"])

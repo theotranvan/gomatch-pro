@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.db.models import Window, F
 from django.db.models.functions import RowNumber
 from rest_framework import generics, status
@@ -70,6 +71,10 @@ class ConfirmScoreView(APIView):
                 {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        # Invalidate ranking caches after score confirmation
+        cache.delete("rankings_tennis")
+        cache.delete("rankings_padel")
+        cache.delete("rankings_all")
         return Response(ScoreSerializer(score).data)
 
 
@@ -145,6 +150,17 @@ class RankingListView(generics.ListAPIView):
                 order_by=F("points").desc(),
             )
         ).order_by("-points")
+
+    def list(self, request, *args, **kwargs):
+        sport = request.query_params.get("sport", "all")
+        cache_key = f"rankings_{sport}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached, headers={"X-Cache": "HIT"})
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=120)
+        response["X-Cache"] = "MISS"
+        return response
 
 
 class MyRankingsView(APIView):

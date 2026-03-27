@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.core.cache import cache
 from django.db.models import Count
 from django.utils import timezone
 from rest_framework import generics, permissions, status
@@ -34,6 +35,16 @@ class VenueListView(generics.ListAPIView):
             .annotate(court_count=Count("courts"))
             .order_by("name")
         )
+
+    def list(self, request, *args, **kwargs):
+        cache_key = "venues_active"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached, headers={"X-Cache": "HIT"})
+        response = super().list(request, *args, **kwargs)
+        cache.set(cache_key, response.data, timeout=600)
+        response["X-Cache"] = "MISS"
+        return response
 
 
 @extend_schema(tags=["Venues"])
