@@ -16,7 +16,7 @@ export type MatchStatus =
 export type ParticipantRole = "creator" | "invited" | "joined";
 export type ParticipantStatus = "pending" | "accepted" | "declined" | "left";
 export type TeamSide = "team_a" | "team_b";
-export type ScoreStatus = "pending" | "confirmed" | "disputed";
+export type ScoreStatus = "pending" | "confirmed" | "disputed" | "expired" | "rejected";
 export type ChatRoomType = "match" | "open_match" | "tournament" | "direct";
 export type MessageType = "text" | "system" | "image";
 export type CourtSurface = "clay" | "hard" | "grass" | "artificial";
@@ -27,6 +27,8 @@ export type TournamentFormat = "single_elimination" | "round_robin";
 export type TournamentStatus = "registration" | "in_progress" | "completed" | "cancelled";
 export type TournamentParticipantStatus = "registered" | "checked_in" | "eliminated" | "winner";
 export type TournamentMatchStatus = "scheduled" | "in_progress" | "completed";
+export type ConnectionStatus = "pending" | "accepted" | "declined" | "blocked";
+export type ConnectionDirection = "sent" | "received";
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,7 @@ export interface AuthResponse {
 export interface PlayerProfile {
   id: string;
   email: string;
+  username: string | null;
   first_name: string;
   last_name: string;
   date_of_birth: string | null;
@@ -177,6 +180,7 @@ export interface Venue {
   phone: string;
   website_url: string | null;
   image_url: string | null;
+  booking_url: string | null;
   is_active: boolean;
   managed_by: string | null;
   courts: Court[];
@@ -235,6 +239,8 @@ export interface Score {
   status: ScoreStatus;
   confirmed_by: string | null;
   confirmed_at: string | null;
+  admin_note: string | null;
+  resolved_by: string | null;
   created_at: string;
 }
 
@@ -382,4 +388,82 @@ export interface PlayerStats {
   favorite_venue: FavoriteVenue | null;
   matches_per_month: MonthlyMatches[];
   points_evolution: Record<string, PointSnapshot[]>;
+}
+
+// ── Connections ──────────────────────────────────────────────────────────────
+
+export interface ConnectionPlayer {
+  id: string;
+  username: string | null;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+  city: string;
+}
+
+export interface Connection {
+  id: string;
+  requester: ConnectionPlayer;
+  receiver: ConnectionPlayer;
+  status: ConnectionStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConnectionStatusResult {
+  status: ConnectionStatus | null;
+  connection_id: string | null;
+  direction: ConnectionDirection | null;
+}
+
+// ── Events ───────────────────────────────────────────────────────────────────
+
+export type EventType = "cup" | "social" | "clinic" | "other";
+export type EventStatus = "upcoming" | "ongoing" | "completed" | "cancelled";
+export type RegistrationStatus = "registered" | "confirmed" | "cancelled" | "waitlisted";
+
+export interface EventListItem {
+  id: string;
+  name: string;
+  event_type: EventType;
+  sport: Sport | null;
+  date: string;
+  end_date: string | null;
+  start_time: string | null;
+  location: string;
+  price: string;
+  image_url: string | null;
+  status: EventStatus;
+  is_featured: boolean;
+  max_attendees: number | null;
+  registrations_count: number;
+  spots_left: number | null;
+}
+
+export interface EventRegistrationPlayer {
+  id: string;
+  username: string | null;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+  city: string;
+}
+
+export interface EventRegistration {
+  id: string;
+  event: string;
+  player: EventRegistrationPlayer;
+  partner: EventRegistrationPlayer | null;
+  status: RegistrationStatus;
+  registered_at: string;
+}
+
+export interface EventDetail extends EventListItem {
+  description: string;
+  venue: string | null;
+  registration_deadline: string | null;
+  registrations: EventRegistration[];
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }

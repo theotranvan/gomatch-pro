@@ -3,7 +3,7 @@ from datetime import date
 from django.contrib.auth import authenticate
 from rest_framework import serializers
 
-from accounts.models import User, PlayerProfile
+from accounts.models import User, PlayerProfile, Connection
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -92,6 +92,7 @@ class PlayerProfileSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "email",
+            "username",
             "first_name",
             "last_name",
             "date_of_birth",
@@ -108,6 +109,21 @@ class PlayerProfileSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "email", "created_at", "updated_at"]
+
+    def validate_username(self, value):
+        """Validate username format and case-insensitive uniqueness."""
+        if value is None:
+            return value
+        if not PlayerProfile.USERNAME_REGEX.match(value):
+            raise serializers.ValidationError(
+                "Le pseudo doit contenir entre 3 et 30 caractères alphanumériques ou underscores."
+            )
+        qs = PlayerProfile.objects.filter(username__iexact=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("Ce pseudo est déjà pris.")
+        return value
 
     def validate_date_of_birth(self, value):
         """Ensure the player is at least 16 years old."""
@@ -157,3 +173,29 @@ class PushTokenSerializer(serializers.Serializer):
     """Serializer for registering an Expo push token."""
 
     token = serializers.CharField(max_length=255)
+
+
+class ConnectionPlayerSerializer(serializers.ModelSerializer):
+    """Lightweight player serializer used inside connection responses."""
+
+    class Meta:
+        model = PlayerProfile
+        fields = ["id", "username", "first_name", "last_name", "avatar_url", "city"]
+
+
+class ConnectionSerializer(serializers.ModelSerializer):
+    """Serializer for Connection objects."""
+
+    requester = ConnectionPlayerSerializer(read_only=True)
+    receiver = ConnectionPlayerSerializer(read_only=True)
+
+    class Meta:
+        model = Connection
+        fields = ["id", "requester", "receiver", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "requester", "receiver", "status", "created_at", "updated_at"]
+
+
+class ConnectionRequestSerializer(serializers.Serializer):
+    """Serializer for POST /connections/request/."""
+
+    player_id = serializers.UUIDField()

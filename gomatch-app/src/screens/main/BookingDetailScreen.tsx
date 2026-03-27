@@ -104,8 +104,8 @@ export function BookingDetailScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={Colors.PRIMARY}
-          colors={[Colors.PRIMARY]}
+          tintColor={Colors.NAVY}
+          colors={[Colors.NAVY]}
         />
       }
     >

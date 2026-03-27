@@ -63,6 +63,8 @@ class ScoreStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     CONFIRMED = "confirmed", "Confirmed"
     DISPUTED = "disputed", "Disputed"
+    EXPIRED = "expired", "Expired"
+    REJECTED = "rejected", "Rejected"
 
 
 class TimeSlotStatus(models.TextChoices):
@@ -149,3 +151,35 @@ class TournamentMatchStatus(models.TextChoices):
     SCHEDULED = "scheduled", "Scheduled"
     IN_PROGRESS = "in_progress", "In Progress"
     COMPLETED = "completed", "Completed"
+
+
+class ConnectionStatus(models.TextChoices):
+    """Statuses for player-to-player connections."""
+    PENDING = "pending", "Pending"
+    ACCEPTED = "accepted", "Accepted"
+    DECLINED = "declined", "Declined"
+    BLOCKED = "blocked", "Blocked"
+
+
+class EventType(models.TextChoices):
+    """Types of events."""
+    CUP = "cup", "Cup"
+    SOCIAL = "social", "Social"
+    CLINIC = "clinic", "Clinic"
+    OTHER = "other", "Other"
+
+
+class EventStatus(models.TextChoices):
+    """Lifecycle statuses for events."""
+    UPCOMING = "upcoming", "Upcoming"
+    ONGOING = "ongoing", "Ongoing"
+    COMPLETED = "completed", "Completed"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+class RegistrationStatus(models.TextChoices):
+    """Statuses for event registrations."""
+    REGISTERED = "registered", "Registered"
+    CONFIRMED = "confirmed", "Confirmed"
+    CANCELLED = "cancelled", "Cancelled"
+    WAITLISTED = "waitlisted", "Waitlisted"

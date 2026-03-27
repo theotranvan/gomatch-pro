@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   },
   padelHint: {
     fontSize: 13,
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     fontStyle: "italic",
     marginTop: 6,
   },
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pickerBtnActive: {
-    borderColor: Colors.PRIMARY,
+    borderColor: Colors.NAVY,
     backgroundColor: "#E8F5EE",
   },
   pickerIcon: {
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     color: Colors.TEXT,
   },
   pickerLabelActive: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
 
   // ── Date / Time inputs ──
@@ -539,11 +539,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
     borderRadius: 14,
     paddingVertical: 18,
     marginTop: 28,
-    shadowColor: Colors.PRIMARY,
+    shadowColor: Colors.NAVY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

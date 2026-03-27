@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import date
 
@@ -7,7 +8,7 @@ from django.db import models
 
 from accounts.enums import UserRole
 from accounts.managers import CustomUserManager
-from core.enums import SkillLevel, PlayMode
+from core.enums import SkillLevel, PlayMode, ConnectionStatus
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -89,10 +90,19 @@ class PlayerProfile(models.Model):
         default=uuid.uuid4,
         editable=False,
     )
+    USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9_]{3,30}$")
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
         related_name="profile",
+    )
+    username = models.CharField(
+        max_length=30,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="username",
     )
     first_name = models.CharField(
         max_length=50,
@@ -191,9 +201,30 @@ class PlayerProfile(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.user.email})"
 
+    @property
+    def display_name(self) -> str:
+        """Return @username if set, else first_name last_name, else email."""
+        if self.username:
+            return f"@{self.username}"
+        if self.first_name or self.last_name:
+            return f"{self.first_name} {self.last_name}".strip()
+        return self.user.email
+
     def clean(self):
-        """Validate that the player is at least 16 years old."""
+        """Validate username format, case-insensitive uniqueness, and age."""
         super().clean()
+        if self.username:
+            if not self.USERNAME_REGEX.match(self.username):
+                raise ValidationError(
+                    {
+                        "username": "Le pseudo doit contenir entre 3 et 30 caractères alphanumériques ou underscores."
+                    }
+                )
+            qs = PlayerProfile.objects.filter(username__iexact=self.username).exclude(pk=self.pk)
+            if qs.exists():
+                raise ValidationError(
+                    {"username": "Ce pseudo est déjà pris."}
+                )
         if self.date_of_birth:
             today = date.today()
             age = (
@@ -218,10 +249,46 @@ class PlayerProfile(models.Model):
         date_of_birth, city, and at least one sport level are filled.
         """
         has_basic_info = all([
+            self.username,
             self.first_name,
             self.last_name,
             self.date_of_birth,
             self.city,
         ])
         has_sport = self.level_tennis is not None or self.level_padel is not None
-        return has_basic_info and has_sport
+        has_avatar = bool(self.avatar_url)
+        return has_basic_info and has_sport and has_avatar
+
+
+class Connection(models.Model):
+    """
+    Bidirectional connection between two players.
+    A sends request → B accepts → they are connected.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    requester = models.ForeignKey(
+        PlayerProfile,
+        on_delete=models.CASCADE,
+        related_name="sent_connections",
+    )
+    receiver = models.ForeignKey(
+        PlayerProfile,
+        on_delete=models.CASCADE,
+        related_name="received_connections",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ConnectionStatus.choices,
+        default=ConnectionStatus.PENDING,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "connections"
+        unique_together = ("requester", "receiver")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.requester} → {self.receiver} ({self.status})"

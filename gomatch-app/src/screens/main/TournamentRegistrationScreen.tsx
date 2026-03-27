@@ -104,7 +104,7 @@ export function TournamentRegistrationScreen() {
       {/* ── Singles: direct registration ── */}
       {!isDoubles && (
         <View style={s.singlesContent}>
-          <Ionicons name="checkmark-circle-outline" size={48} color={Colors.PRIMARY} />
+          <Ionicons name="checkmark-circle-outline" size={48} color={Colors.NAVY} />
           <Text style={s.singlesTitle}>Prêt à vous inscrire ?</Text>
           <Text style={s.singlesBody}>
             Confirmez votre inscription au tournoi en simple.
@@ -153,7 +153,7 @@ export function TournamentRegistrationScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                {searching && <ActivityIndicator size="small" color={Colors.PRIMARY} />}
+                {searching && <ActivityIndicator size="small" color={Colors.NAVY} />}
               </View>
               <FlatList
                 data={players}
@@ -180,7 +180,7 @@ export function TournamentRegistrationScreen() {
                         <Text style={s.playerCity}>{item.city}</Text>
                       )}
                     </View>
-                    <Ionicons name="add-circle-outline" size={22} color={Colors.PRIMARY} />
+                    <Ionicons name="add-circle-outline" size={22} color={Colors.NAVY} />
                   </TouchableOpacity>
                 )}
                 ListEmptyComponent={
@@ -256,18 +256,18 @@ const s = StyleSheet.create({
     padding: 14,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: Colors.PRIMARY,
+    borderColor: Colors.NAVY,
   },
   selectedAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.PRIMARY + "18",
+    backgroundColor: Colors.NAVY + "18",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
-  selectedInitial: { fontSize: 16, fontWeight: "700", color: Colors.PRIMARY },
+  selectedInitial: { fontSize: 16, fontWeight: "700", color: Colors.NAVY },
   selectedInfo: { flex: 1 },
   selectedName: { fontSize: 15, fontWeight: "600", color: Colors.TEXT },
   selectedCity: { fontSize: 12, color: Colors.TEXT_SECONDARY, marginTop: 1 },
@@ -300,12 +300,12 @@ const s = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.PRIMARY + "14",
+    backgroundColor: Colors.NAVY + "14",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
-  playerInitial: { fontSize: 14, fontWeight: "700", color: Colors.PRIMARY },
+  playerInitial: { fontSize: 14, fontWeight: "700", color: Colors.NAVY },
   playerInfo: { flex: 1 },
   playerName: { fontSize: 14, fontWeight: "600", color: Colors.TEXT },
   playerCity: { fontSize: 12, color: Colors.TEXT_SECONDARY, marginTop: 1 },
@@ -328,11 +328,11 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
     borderRadius: 14,
     paddingVertical: 14,
     gap: 8,
-    shadowColor: Colors.PRIMARY,
+    shadowColor: Colors.NAVY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

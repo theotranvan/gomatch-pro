@@ -93,7 +93,7 @@ export function VenueListScreen() {
             { backgroundColor: getPlaceholderColor(item.id) },
           ]}
         >
-          <Ionicons name="business-outline" size={36} color={Colors.PRIMARY} />
+          <Ionicons name="business-outline" size={36} color={Colors.NAVY} />
         </View>
       )}
 
@@ -116,7 +116,7 @@ export function VenueListScreen() {
           <Ionicons
             name="tennisball-outline"
             size={14}
-            color={Colors.PRIMARY}
+            color={Colors.NAVY}
           />
           <Text style={styles.cardCourts}>
             {item.court_count} terrain{item.court_count !== 1 ? "s" : ""}
@@ -209,8 +209,8 @@ export function VenueListScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.PRIMARY}
-            colors={[Colors.PRIMARY]}
+            tintColor={Colors.NAVY}
+            colors={[Colors.NAVY]}
           />
         }
         renderItem={renderCard}
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
   },
   filterChipActive: {
-    borderColor: Colors.PRIMARY,
+    borderColor: Colors.NAVY,
     backgroundColor: "#E8F5EE",
   },
   filterText: {
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     color: Colors.TEXT_SECONDARY,
   },
   filterTextActive: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
 
   // ── List ──
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   },
   cardCourts: {
     fontSize: 13,
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     fontWeight: "600",
   },
   chevron: {

@@ -277,7 +277,7 @@ export function PlayerSearchScreen() {
           <Ionicons
             name={showFilters ? "options" : "options-outline"}
             size={22}
-            color={showFilters ? Colors.PRIMARY : Colors.TEXT_SECONDARY}
+            color={showFilters ? Colors.NAVY : Colors.TEXT_SECONDARY}
           />
         </TouchableOpacity>
       </View>
@@ -319,8 +319,8 @@ export function PlayerSearchScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[Colors.PRIMARY]}
-              tintColor={Colors.PRIMARY}
+              colors={[Colors.NAVY]}
+              tintColor={Colors.NAVY}
             />
           }
           onEndReached={onEndReached}
@@ -328,7 +328,7 @@ export function PlayerSearchScreen() {
           ListFooterComponent={
             loadingMore ? (
               <ActivityIndicator
-                color={Colors.PRIMARY}
+                color={Colors.NAVY}
                 style={{ marginVertical: 16 }}
               />
             ) : null
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0F0F0",
   },
   pillActive: {
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
   },
   pillText: {
     fontSize: 13,
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.PRIMARY_LIGHT,
+    backgroundColor: Colors.GREEN,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     fontWeight: "500",
   },
   modeText: {

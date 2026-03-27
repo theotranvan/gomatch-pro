@@ -51,6 +51,21 @@ export const authService = {
     return data;
   },
 
+  async uploadAvatar(uri: string): Promise<string> {
+    const filename = uri.split("/").pop() ?? "avatar.jpg";
+    const ext = filename.split(".").pop()?.toLowerCase() ?? "jpg";
+    const mimeMap: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
+    const type = mimeMap[ext] ?? "image/jpeg";
+
+    const form = new FormData();
+    form.append("image", { uri, name: filename, type } as unknown as Blob);
+
+    const { data } = await api.post<{ avatar_url: string }>("/auth/upload-avatar/", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data.avatar_url;
+  },
+
   async storeTokens(tokens: Tokens): Promise<void> {
     await AsyncStorage.setItem("access_token", tokens.access);
     await AsyncStorage.setItem("refresh_token", tokens.refresh);

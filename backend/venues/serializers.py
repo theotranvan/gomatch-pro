@@ -72,6 +72,7 @@ class VenueDetailSerializer(serializers.ModelSerializer):
             "phone",
             "website_url",
             "image_url",
+            "booking_url",
             "is_active",
             "managed_by",
             "courts",

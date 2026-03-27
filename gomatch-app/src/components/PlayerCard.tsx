@@ -17,12 +17,14 @@ export function PlayerCard({ player, onPress }: PlayerCardProps) {
         <View style={styles.row}>
           <View style={styles.avatar}>
             <Text style={styles.initials}>
-              {getInitials(player.first_name, player.last_name)}
+              {player.username
+                ? player.username.slice(0, 2).toUpperCase()
+                : getInitials(player.first_name, player.last_name)}
             </Text>
           </View>
           <View style={styles.info}>
             <Text style={styles.name}>
-              {player.first_name} {player.last_name}
+              {player.username ? `@${player.username}` : `${player.first_name} ${player.last_name}`}
             </Text>
             {player.city && (
               <Text style={styles.detail}>{player.city}</Text>
@@ -49,7 +51,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.PRIMARY_LIGHT,
+    backgroundColor: Colors.GREEN,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,

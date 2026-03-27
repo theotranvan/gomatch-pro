@@ -14,6 +14,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { chatService } from "../../services/chat";
 import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
+import { FONT_SIZES } from "../../constants/theme";
+import { Avatar } from "../../components/Avatar";
 import { LoadingScreen } from "../../components/LoadingScreen";
 import { EmptyState } from "../../components/EmptyState";
 import type { ChatMessage } from "../../types";
@@ -77,9 +79,7 @@ export function ChatScreen({ route, navigation }: Props) {
     }
   }, [roomId]);
 
-  useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
+  useEffect(() => { loadMessages(); }, [loadMessages]);
 
   // Polling for new messages
   useEffect(() => {
@@ -88,8 +88,7 @@ export function ChatScreen({ route, navigation }: Props) {
         const res = await chatService.getMessages(roomId, 1);
         const sorted = res.results.sort(
           (a, b) =>
-            new Date(a.created_at).getTime() -
-            new Date(b.created_at).getTime(),
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
         );
         if (sorted.length > 0) {
           const newestId = sorted[sorted.length - 1].id;
@@ -104,7 +103,6 @@ export function ChatScreen({ route, navigation }: Props) {
         // silent
       }
     }, POLL_INTERVAL);
-
     return () => clearInterval(interval);
   }, [roomId]);
 
@@ -157,10 +155,7 @@ export function ChatScreen({ route, navigation }: Props) {
 
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleTimeString("fr-CH", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return d.toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" });
   };
 
   const formatDateSeparator = (dateStr: string) => {
@@ -181,9 +176,7 @@ export function ChatScreen({ route, navigation }: Props) {
     if (index === 0) return formatDateSeparator(messages[0].created_at);
     const prevDate = new Date(messages[index - 1].created_at).toDateString();
     const currDate = new Date(messages[index].created_at).toDateString();
-    if (prevDate !== currDate) {
-      return formatDateSeparator(messages[index].created_at);
-    }
+    if (prevDate !== currDate) return formatDateSeparator(messages[index].created_at);
     return null;
   };
 
@@ -204,42 +197,28 @@ export function ChatScreen({ route, navigation }: Props) {
           <View style={styles.systemContainer}>
             <Text style={styles.systemText}>{item.content}</Text>
           </View>
+        ) : isMe ? (
+          /* ── My bubble (right, blue) ── */
+          <View style={styles.bubbleRowRight}>
+            <View style={styles.bubbleMine}>
+              <Text style={styles.bubbleTextMine}>{item.content}</Text>
+            </View>
+            <Text style={styles.timeRight}>{formatTime(item.created_at)}</Text>
+          </View>
         ) : (
-          <View
-            style={[
-              styles.bubbleRow,
-              isMe ? styles.bubbleRowRight : styles.bubbleRowLeft,
-            ]}
-          >
-            <View>
-              {!isMe && (
-                <Text style={styles.senderName}>
-                  {item.sender_name.split(" ")[0]}
-                </Text>
-              )}
-              <View
-                style={[
-                  styles.bubble,
-                  isMe ? styles.bubbleMine : styles.bubbleOther,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    isMe ? styles.bubbleTextMine : styles.bubbleTextOther,
-                  ]}
-                >
-                  {item.content}
-                </Text>
-                <Text
-                  style={[
-                    styles.bubbleTime,
-                    isMe ? styles.bubbleTimeMine : styles.bubbleTimeOther,
-                  ]}
-                >
-                  {formatTime(item.created_at)}
-                </Text>
+          /* ── Others' bubble (left, gray + avatar) ── */
+          <View style={styles.bubbleRowLeft}>
+            <View style={styles.avatarCol}>
+              <Avatar name={item.sender_name} size="sm" />
+            </View>
+            <View style={styles.bubbleLeftContent}>
+              <Text style={styles.senderName}>
+                {item.sender_name.split(" ")[0]}
+              </Text>
+              <View style={styles.bubbleOther}>
+                <Text style={styles.bubbleTextOther}>{item.content}</Text>
               </View>
+              <Text style={styles.timeLeft}>{formatTime(item.created_at)}</Text>
             </View>
           </View>
         )}
@@ -247,9 +226,7 @@ export function ChatScreen({ route, navigation }: Props) {
     );
   };
 
-  if (loading) {
-    return <LoadingScreen message="Chargement des messages…" />;
-  }
+  if (loading) return <LoadingScreen message="Chargement des messages…" />;
 
   return (
     <KeyboardAvoidingView
@@ -302,7 +279,7 @@ export function ChatScreen({ route, navigation }: Props) {
           disabled={!inputText.trim() || sending}
           activeOpacity={0.7}
         >
-          <Ionicons name="send" size={20} color="#FFFFFF" />
+          <Ionicons name="send" size={18} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -310,148 +287,121 @@ export function ChatScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-  },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-  },
-  loadingText: {
-    color: Colors.TEXT_SECONDARY,
-    fontSize: 16,
-  },
+  container: { flex: 1, backgroundColor: Colors.SURFACE },
+
+  // ── Header ──
   headerTitle: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.h3,
     fontWeight: "700",
     color: Colors.TEXT,
     textAlign: "center",
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: FONT_SIZES.caption,
     color: Colors.TEXT_SECONDARY,
     textAlign: "center",
   },
+
+  // ── Message list ──
   messageList: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingTop: 8,
     paddingBottom: 8,
     flexGrow: 1,
     justifyContent: "flex-end",
   },
-  dateSeparator: {
-    alignItems: "center",
-    marginVertical: 12,
-  },
+
+  // ── Date separator ──
+  dateSeparator: { alignItems: "center", marginVertical: 14 },
   dateSeparatorText: {
-    fontSize: 12,
+    fontSize: FONT_SIZES.caption,
     color: Colors.TEXT_SECONDARY,
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Colors.BORDER,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 10,
     overflow: "hidden",
     fontWeight: "500",
   },
-  // System message
+
+  // ── System message ──
   systemContainer: {
     alignItems: "center",
     marginVertical: 6,
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
   systemText: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.caption,
     fontStyle: "italic",
-    color: "#999999",
+    color: Colors.TEXT_SECONDARY,
     textAlign: "center",
   },
-  // Bubble rows
-  bubbleRow: {
-    marginVertical: 3,
-    maxWidth: "80%",
-  },
+
+  // ── My bubble (right, blue) ──
   bubbleRowRight: {
     alignSelf: "flex-end",
-  },
-  bubbleRowLeft: {
-    alignSelf: "flex-start",
-  },
-  senderName: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: Colors.PRIMARY,
-    marginBottom: 2,
-    marginLeft: 8,
-  },
-  // Bubbles
-  bubble: {
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    minWidth: 60,
+    maxWidth: "78%",
+    marginVertical: 3,
   },
   bubbleMine: {
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.BLUE,
+    borderRadius: 18,
     borderBottomRightRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  bubbleTextMine: { color: "#FFFFFF", fontSize: 15, lineHeight: 20 },
+  timeRight: {
+    fontSize: 12,
+    color: Colors.TEXT_SECONDARY,
+    alignSelf: "flex-end",
+    marginTop: 3,
+    marginRight: 4,
+  },
+
+  // ── Others' bubble (left, gray + avatar) ──
+  bubbleRowLeft: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    maxWidth: "82%",
+    marginVertical: 3,
+  },
+  avatarCol: { marginRight: 8, marginTop: 18 },
+  bubbleLeftContent: { flex: 1 },
+  senderName: {
+    fontSize: FONT_SIZES.caption,
+    fontWeight: "600",
+    color: Colors.NAVY,
+    marginBottom: 2,
+    marginLeft: 4,
   },
   bubbleOther: {
-    backgroundColor: "#E8E8E8",
+    backgroundColor: Colors.CARD_BG,
+    borderRadius: 18,
     borderBottomLeftRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  bubbleText: {
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  bubbleTextMine: {
-    color: "#FFFFFF",
-  },
-  bubbleTextOther: {
-    color: Colors.TEXT,
-  },
-  bubbleTime: {
-    fontSize: 11,
-    marginTop: 4,
-    alignSelf: "flex-end",
-  },
-  bubbleTimeMine: {
-    color: "rgba(255,255,255,0.7)",
-  },
-  bubbleTimeOther: {
+  bubbleTextOther: { color: Colors.TEXT, fontSize: 15, lineHeight: 20 },
+  timeLeft: {
+    fontSize: 12,
     color: Colors.TEXT_SECONDARY,
+    marginTop: 3,
+    marginLeft: 4,
   },
-  // Loading more
-  loadingMore: {
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  loadingMoreText: {
-    fontSize: 13,
-    color: Colors.TEXT_SECONDARY,
-  },
-  // Empty state
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: Colors.TEXT_SECONDARY,
-    marginTop: 12,
-    textAlign: "center",
-  },
-  // Input bar
+
+  // ── Loading more ──
+  loadingMore: { alignItems: "center", paddingVertical: 12 },
+  loadingMoreText: { fontSize: FONT_SIZES.caption, color: Colors.TEXT_SECONDARY },
+
+  // ── Input bar ──
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: Colors.BACKGROUND,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Colors.BORDER,
   },
   textInput: {
@@ -459,7 +409,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     maxHeight: 100,
     borderRadius: 20,
-    backgroundColor: "#F0F0F0",
+    backgroundColor: Colors.CARD_BG,
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 10,
@@ -471,11 +421,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.BLUE,
     alignItems: "center",
     justifyContent: "center",
   },
-  sendButtonDisabled: {
-    backgroundColor: "#B0B0B0",
-  },
+  sendButtonDisabled: { backgroundColor: "#C8D5E0" },
 });

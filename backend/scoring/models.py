@@ -64,6 +64,19 @@ class Score(models.Model):
         blank=True,
         verbose_name="confirmed at",
     )
+    admin_note = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name="admin note",
+    )
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_scores",
+        verbose_name="resolved by",
+    )
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name="created at",

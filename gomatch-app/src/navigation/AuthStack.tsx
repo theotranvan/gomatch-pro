@@ -17,7 +17,7 @@ export function AuthStack() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: Colors.PRIMARY },
+        headerStyle: { backgroundColor: Colors.NAVY },
         headerTintColor: Colors.BACKGROUND,
         headerTitleStyle: { fontWeight: "bold" },
       }}

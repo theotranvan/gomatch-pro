@@ -116,7 +116,7 @@ const s = StyleSheet.create({
   roundTitle: {
     fontSize: 13,
     fontWeight: "700",
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     marginBottom: 12,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -151,7 +151,7 @@ const s = StyleSheet.create({
     minHeight: 34,
   },
   slotWinner: {
-    backgroundColor: Colors.PRIMARY + "12",
+    backgroundColor: Colors.NAVY + "12",
   },
   slotText: {
     fontSize: 13,
@@ -161,11 +161,11 @@ const s = StyleSheet.create({
   },
   slotTextWinner: {
     fontWeight: "800",
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
   checkMark: {
     fontSize: 12,
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     fontWeight: "700",
     marginLeft: 4,
   },

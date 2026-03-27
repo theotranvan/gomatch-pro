@@ -1,13 +1,15 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { Avatar } from "./Avatar";
 import { Colors } from "../constants/colors";
+import { CARD_RADIUS, CARD_SHADOW, FONT_SIZES } from "../constants/theme";
 import type { OpenMatchListItem, SkillLevel } from "../types";
 import { formatDate, formatTime } from "../utils/helpers";
 
-const LEVEL_SHORT: Record<SkillLevel, string> = {
-  beginner: "Déb.",
-  intermediate: "Inter.",
+const LEVEL_LABELS: Record<SkillLevel, string> = {
+  beginner: "Débutant",
+  intermediate: "Intermédiaire",
   advanced: "Avancé",
 };
 
@@ -17,114 +19,147 @@ interface OpenMatchCardProps {
   horizontal?: boolean;
 }
 
+function sessionDate(date: string, time: string): string {
+  const d = new Date(date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dDate = new Date(d);
+  dDate.setHours(0, 0, 0, 0);
+
+  let label: string;
+  if (dDate.getTime() === today.getTime()) label = "Aujourd'hui";
+  else if (dDate.getTime() === tomorrow.getTime()) label = "Demain";
+  else label = formatDate(date);
+
+  return `${label} ${formatTime(time)}`;
+}
+
 export function OpenMatchCard({ match, onPress, horizontal }: OpenMatchCardProps) {
-  const levelLabel =
-    match.required_level_min && match.required_level_max
-      ? `${LEVEL_SHORT[match.required_level_min]} – ${LEVEL_SHORT[match.required_level_max]}`
-      : match.required_level_min
-        ? LEVEL_SHORT[match.required_level_min] + "+"
-        : "Tous niveaux";
+  const isPadel = match.sport === "padel";
+  const isFriendly = match.play_mode === "friendly";
+  const gradientColors: [string, string] = isFriendly
+    ? ["#2E8B57", "#1A3A5C"]
+    : ["#3B82F6", "#1A3A5C"];
+
+  const levelLabel = match.required_level_min
+    ? LEVEL_LABELS[match.required_level_min]
+    : "Tous niveaux";
+  const filled = match.max_participants - match.spots_left;
 
   return (
     <TouchableOpacity
-      style={[styles.card, horizontal && styles.cardHorizontal]}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.85}
+      disabled={!onPress}
     >
-      {/* Sport icon */}
-      <View style={styles.sportBadge}>
-        <Text style={styles.sportEmoji}>
-          {match.sport === "tennis" ? "🎾" : "🏓"}
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.card, horizontal && styles.cardHorizontal]}
+      >
+        {/* Badge "Ouvert" */}
+        <View style={styles.openBadge}>
+          <Text style={styles.openBadgeText}>Ouvert</Text>
+        </View>
+
+        <Text style={styles.title}>
+          {isFriendly ? "Match Amical" : "Match Compétition"}
         </Text>
-      </View>
-
-      {/* Level */}
-      <View style={styles.levelBadge}>
-        <Text style={styles.levelText}>{levelLabel}</Text>
-      </View>
-
-      {/* Creator */}
-      <Text style={styles.creator} numberOfLines={1}>
-        {match.created_by_name}
-      </Text>
-
-      {/* Date & time */}
-      <View style={styles.row}>
-        <Ionicons name="calendar-outline" size={13} color={Colors.TEXT_SECONDARY} />
         <Text style={styles.meta}>
-          {formatDate(match.scheduled_date)} · {formatTime(match.scheduled_time)}
+          {isPadel ? "🏓 Padel" : "🎾 Tennis"} •{" "}
+          {sessionDate(match.scheduled_date, match.scheduled_time)}
         </Text>
-      </View>
 
-      {/* Spots */}
-      <View style={styles.row}>
-        <Ionicons name="people-outline" size={13} color={Colors.TEXT_SECONDARY} />
-        <Text style={[styles.meta, match.spots_left <= 1 && styles.metaUrgent]}>
-          {match.spots_left} place{match.spots_left > 1 ? "s" : ""} restante{match.spots_left > 1 ? "s" : ""}
-        </Text>
-      </View>
+        <View style={styles.bottom}>
+          <View style={styles.avatarRow}>
+            <Avatar name={match.created_by_name} size="sm" />
+            {filled > 1 && (
+              <View style={styles.avatarOverlap}>
+                <Avatar name={`P${filled}`} size="sm" />
+              </View>
+            )}
+          </View>
+          <Text style={styles.players}>
+            {filled}/{match.max_participants} joueurs
+          </Text>
+        </View>
+
+        {/* Level badge */}
+        <View style={styles.levelBadge}>
+          <Text style={styles.levelText}>{levelLabel}</Text>
+        </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Colors.BACKGROUND,
-    borderRadius: 16,
+    width: 280,
+    height: 160,
+    borderRadius: CARD_RADIUS,
     padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    justifyContent: "space-between",
+    marginBottom: 10,
+    ...CARD_SHADOW,
   },
   cardHorizontal: {
-    width: 180,
     marginRight: 12,
   },
-  sportBadge: {
-    width: 40,
-    height: 40,
+  openBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: Colors.SUCCESS,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderRadius: 12,
-    backgroundColor: Colors.PRIMARY + "12",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
   },
-  sportEmoji: {
-    fontSize: 20,
+  openBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  title: {
+    fontSize: FONT_SIZES.h3,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginRight: 70,
+  },
+  meta: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+  },
+  bottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatarOverlap: {
+    marginLeft: -8,
+  },
+  players: {
+    fontSize: FONT_SIZES.caption,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.9)",
   },
   levelBadge: {
     alignSelf: "flex-start",
-    backgroundColor: Colors.PRIMARY + "15",
-    paddingHorizontal: 8,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 6,
-    marginBottom: 8,
+    borderRadius: 10,
   },
   levelText: {
     fontSize: 11,
     fontWeight: "700",
-    color: Colors.PRIMARY,
-  },
-  creator: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.TEXT,
-    marginBottom: 6,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 3,
-  },
-  meta: {
-    fontSize: 12,
-    color: Colors.TEXT_SECONDARY,
-    marginLeft: 5,
-  },
-  metaUrgent: {
-    color: Colors.ERROR,
-    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });

@@ -8,10 +8,12 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
+import { FONT_SIZES } from "../../constants/theme";
 import { Input } from "../../components/Input";
 import { Button } from "../../components/Button";
 
@@ -30,25 +32,12 @@ export function RegisterScreen({ navigation }: Props) {
 
   function validate(): boolean {
     const e: Record<string, string> = {};
-
-    if (!email.trim()) {
-      e.email = "L'email est requis.";
-    } else if (!EMAIL_REGEX.test(email.trim())) {
-      e.email = "Format d'email invalide.";
-    }
-
-    if (!password) {
-      e.password = "Le mot de passe est requis.";
-    } else if (password.length < 8) {
-      e.password = "8 caractères minimum.";
-    }
-
-    if (!passwordConfirm) {
-      e.passwordConfirm = "Veuillez confirmer le mot de passe.";
-    } else if (password !== passwordConfirm) {
-      e.passwordConfirm = "Les mots de passe ne correspondent pas.";
-    }
-
+    if (!email.trim()) e.email = "L'email est requis.";
+    else if (!EMAIL_REGEX.test(email.trim())) e.email = "Format d'email invalide.";
+    if (!password) e.password = "Le mot de passe est requis.";
+    else if (password.length < 8) e.password = "8 caractères minimum.";
+    if (!passwordConfirm) e.passwordConfirm = "Veuillez confirmer le mot de passe.";
+    else if (password !== passwordConfirm) e.passwordConfirm = "Les mots de passe ne correspondent pas.";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -93,129 +82,125 @@ export function RegisterScreen({ navigation }: Props) {
         contentContainerStyle={styles.inner}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Créer un compte</Text>
-          <Text style={styles.subtitle}>
-            Rejoins la communauté GoMatch
-          </Text>
+        {/* Logo */}
+        <View style={styles.logoArea}>
+          <View style={styles.logoBadge}>
+            <Ionicons name="tennisball" size={28} color="#FFFFFF" />
+          </View>
+          <Text style={styles.logoText}>GoMatch</Text>
         </View>
+
+        {/* Title */}
+        <Text style={styles.title}>Créer un compte</Text>
+        <Text style={styles.subtitle}>Rejoins la communauté GoMatch</Text>
+
+        {/* Error */}
+        {globalError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{globalError}</Text>
+          </View>
+        ) : null}
 
         {/* Form */}
-        <View style={styles.form}>
-          {globalError ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorBoxText}>{globalError}</Text>
-            </View>
-          ) : null}
+        <Input
+          placeholder="Email"
+          value={email}
+          onChangeText={(v) => { setEmail(v); clearField("email"); }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          error={errors.email}
+        />
+        <Input
+          placeholder="Mot de passe"
+          value={password}
+          onChangeText={(v) => { setPassword(v); clearField("password"); }}
+          secureTextEntry
+          error={errors.password}
+          hint="8 caractères minimum"
+        />
+        <Input
+          placeholder="Confirmer le mot de passe"
+          value={passwordConfirm}
+          onChangeText={(v) => { setPasswordConfirm(v); clearField("passwordConfirm"); }}
+          secureTextEntry
+          error={errors.passwordConfirm}
+        />
 
-          <Input
-            label="Email"
-            placeholder="votre@email.com"
-            value={email}
-            onChangeText={(v) => { setEmail(v); clearField("email"); }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            error={errors.email}
-          />
+        <Button
+          title="Créer mon compte"
+          onPress={handleRegister}
+          loading={loading}
+          style={{ marginTop: 8 }}
+        />
 
-          <Input
-            label="Mot de passe"
-            placeholder="Votre mot de passe"
-            value={password}
-            onChangeText={(v) => { setPassword(v); clearField("password"); }}
-            secureTextEntry
-            error={errors.password}
-            hint="8 caractères minimum"
-          />
-
-          <Input
-            label="Confirmer le mot de passe"
-            placeholder="Retapez votre mot de passe"
-            value={passwordConfirm}
-            onChangeText={(v) => { setPasswordConfirm(v); clearField("passwordConfirm"); }}
-            secureTextEntry
-            error={errors.passwordConfirm}
-          />
-
-          <Button
-            title="Créer mon compte"
-            onPress={handleRegister}
-            loading={loading}
-            style={styles.button}
-          />
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Login")}
-            style={styles.linkContainer}
-          >
-            <Text style={styles.linkText}>Déjà un compte ? </Text>
-            <Text style={styles.linkBold}>Se connecter</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Login")}
+          style={styles.linkRow}
+        >
+          <Text style={styles.linkGray}>Déjà un compte ? </Text>
+          <Text style={styles.linkBlue}>Se connecter</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.BACKGROUND,
-  },
+  container: { flex: 1, backgroundColor: Colors.BACKGROUND },
   inner: {
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 28,
     paddingVertical: 40,
   },
-  header: {
+
+  // Logo
+  logoArea: { alignItems: "center", marginBottom: 32 },
+  logoBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: Colors.NAVY,
     alignItems: "center",
-    marginBottom: 36,
+    justifyContent: "center",
+    marginBottom: 12,
   },
-  title: {
-    fontSize: 28,
+  logoText: {
+    fontSize: 30,
     fontWeight: "800",
-    color: Colors.TEXT,
-    letterSpacing: -0.3,
+    color: Colors.NAVY,
+    letterSpacing: -0.5,
+  },
+
+  // Title
+  title: {
+    fontSize: FONT_SIZES.h1,
+    fontWeight: "700",
+    color: Colors.NAVY,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: FONT_SIZES.body,
     color: Colors.TEXT_SECONDARY,
-    marginTop: 6,
+    marginBottom: 24,
   },
-  form: {
-    width: "100%",
-  },
+
+  // Error
   errorBox: {
     backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: "#FECACA",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  errorBoxText: {
-    color: Colors.ERROR,
-    fontSize: 14,
-    textAlign: "center",
-  },
-  button: {
-    marginTop: 8,
-  },
-  linkContainer: {
+  errorText: { color: Colors.ERROR, fontSize: FONT_SIZES.body, textAlign: "center" },
+
+  // Link
+  linkRow: {
     flexDirection: "row",
     justifyContent: "center",
     marginTop: 24,
   },
-  linkText: {
-    fontSize: 14,
-    color: Colors.TEXT_SECONDARY,
-  },
-  linkBold: {
-    fontSize: 14,
-    color: Colors.PRIMARY,
-    fontWeight: "700",
-  },
+  linkGray: { fontSize: FONT_SIZES.body, color: Colors.TEXT_SECONDARY },
+  linkBlue: { fontSize: FONT_SIZES.body, fontWeight: "700", color: Colors.BLUE },
 });

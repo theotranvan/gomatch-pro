@@ -1,8 +1,11 @@
 from rest_framework import generics, permissions, serializers as drf_serializers, status
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from drf_spectacular.utils import extend_schema, inline_serializer
+
+import cloudinary.uploader
 
 from accounts.filters import PlayerFilter
 from accounts.models import User, PlayerProfile
@@ -154,6 +157,91 @@ class RegisterPushTokenView(APIView):
         profile.expo_push_token = serializer.validated_data["token"]
         profile.save(update_fields=["expo_push_token"])
         return Response({"detail": "Push token registered."}, status=status.HTTP_200_OK)
+
+
+class CheckUsernameView(APIView):
+    """GET /api/auth/check-username/?username=xxx"""
+
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="Check username availability",
+        parameters=[
+            {
+                "name": "username",
+                "in": "query",
+                "required": True,
+                "schema": {"type": "string"},
+            }
+        ],
+    )
+    def get(self, request):
+        username = request.query_params.get("username", "").strip()
+        if not username or len(username) < 3:
+            return Response({"available": False}, status=status.HTTP_200_OK)
+        taken = PlayerProfile.objects.filter(username__iexact=username).exists()
+        return Response({"available": not taken}, status=status.HTTP_200_OK)
+
+
+class UploadAvatarView(APIView):
+    """POST /api/auth/upload-avatar/ — Upload profile picture to Cloudinary."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    @extend_schema(
+        tags=["Auth"],
+        summary="Upload avatar image",
+    )
+    def post(self, request):
+        image = request.FILES.get("image")
+        if not image:
+            return Response(
+                {"detail": "No image provided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate file size (max 5 MB)
+        if image.size > 5 * 1024 * 1024:
+            return Response(
+                {"detail": "Image too large (max 5 MB)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate content type
+        allowed = ("image/jpeg", "image/png", "image/webp")
+        if image.content_type not in allowed:
+            return Response(
+                {"detail": "Format non supporté. Utilisez JPEG, PNG ou WebP."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = cloudinary.uploader.upload(
+                image,
+                folder="gomatch/avatars",
+                public_id=str(request.user.id),
+                overwrite=True,
+                transformation=[
+                    {"width": 400, "height": 400, "crop": "fill", "gravity": "face"},
+                ],
+            )
+        except Exception:
+            return Response(
+                {"detail": "Upload failed. Please try again."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        avatar_url = result["secure_url"]
+        profile = request.user.profile
+        profile.avatar_url = avatar_url
+        profile.save(update_fields=["avatar_url"])
+
+        return Response(
+            {"avatar_url": avatar_url},
+            status=status.HTTP_200_OK,
+        )
 
 
 @extend_schema(tags=["Players"])

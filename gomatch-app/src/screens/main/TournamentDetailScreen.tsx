@@ -58,7 +58,7 @@ const FORMAT_LABELS: Record<string, string> = {
 };
 
 const PARTICIPANT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  registered: { label: "Inscrit", color: Colors.PRIMARY },
+  registered: { label: "Inscrit", color: Colors.NAVY },
   checked_in: { label: "Check-in", color: "#2563EB" },
   eliminated: { label: "Éliminé", color: Colors.ERROR },
   winner: { label: "Vainqueur", color: Colors.SUCCESS },
@@ -112,8 +112,8 @@ export function TournamentDetailScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.PRIMARY}
-            colors={[Colors.PRIMARY]}
+            tintColor={Colors.NAVY}
+            colors={[Colors.NAVY]}
           />
         }
       >
@@ -170,7 +170,7 @@ export function TournamentDetailScreen() {
               <Ionicons
                 name={t.icon}
                 size={16}
-                color={tab === t.key ? Colors.PRIMARY : Colors.TEXT_SECONDARY}
+                color={tab === t.key ? Colors.NAVY : Colors.TEXT_SECONDARY}
               />
               <Text style={[s.tabLabel, tab === t.key && s.tabLabelActive]}>
                 {t.label}
@@ -383,9 +383,9 @@ const s = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
-  tabBtnActive: { borderBottomColor: Colors.PRIMARY },
+  tabBtnActive: { borderBottomColor: Colors.NAVY },
   tabLabel: { fontSize: 13, fontWeight: "600", color: Colors.TEXT_SECONDARY },
-  tabLabelActive: { color: Colors.PRIMARY },
+  tabLabelActive: { color: Colors.NAVY },
 
   /* Tab content */
   tabContent: { minHeight: 200 },
@@ -430,12 +430,12 @@ const s = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: Colors.PRIMARY + "14",
+    backgroundColor: Colors.NAVY + "14",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
-  seedText: { fontSize: 13, fontWeight: "700", color: Colors.PRIMARY },
+  seedText: { fontSize: 13, fontWeight: "700", color: Colors.NAVY },
   participantInfo: { flex: 1 },
   participantName: { fontSize: 14, fontWeight: "600", color: Colors.TEXT },
   partnerName: { fontSize: 12, color: Colors.TEXT_SECONDARY, marginTop: 1 },
@@ -454,11 +454,11 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
     borderRadius: 14,
     paddingVertical: 14,
     gap: 8,
-    shadowColor: Colors.PRIMARY,
+    shadowColor: Colors.NAVY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

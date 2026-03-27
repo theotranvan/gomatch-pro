@@ -19,6 +19,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { NetworkError } from "../../components/NetworkError";
 import { ErrorState } from "../../components/ErrorState";
 import { isNetworkError } from "../../utils/network";
+import { AppHeader } from "../../components/AppHeader";
 import type { OpenMatchListItem, Sport, SkillLevel } from "../../types";
 
 const LEVEL_LABELS: Record<SkillLevel, string> = {
@@ -192,6 +193,7 @@ export function OpenMatchesScreen() {
 
   return (
     <View style={styles.container}>
+      <AppHeader />
       {/* ── Filters ── */}
       <View style={styles.filtersContainer}>
         <View style={styles.filterRow}>
@@ -233,8 +235,8 @@ export function OpenMatchesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.PRIMARY}
-            colors={[Colors.PRIMARY]}
+            tintColor={Colors.NAVY}
+            colors={[Colors.NAVY]}
           />
         }
         renderItem={renderCard}
@@ -289,7 +291,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
   },
   filterChipActive: {
-    borderColor: Colors.PRIMARY,
+    borderColor: Colors.NAVY,
     backgroundColor: "#E8F5EE",
   },
   filterText: {
@@ -298,7 +300,7 @@ const styles = StyleSheet.create({
     color: Colors.TEXT_SECONDARY,
   },
   filterTextActive: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
 
   // ── List ──
@@ -330,7 +332,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: Colors.PRIMARY + "12",
+    backgroundColor: Colors.NAVY + "12",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -349,7 +351,7 @@ const styles = StyleSheet.create({
   },
   levelBadge: {
     alignSelf: "flex-start",
-    backgroundColor: Colors.PRIMARY + "15",
+    backgroundColor: Colors.NAVY + "15",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -357,7 +359,7 @@ const styles = StyleSheet.create({
   levelText: {
     fontSize: 11,
     fontWeight: "700",
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
   spotsContainer: {
     alignItems: "center",
@@ -417,7 +419,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
     borderRadius: 12,
     paddingVertical: 12,
     marginTop: 14,
@@ -448,7 +450,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyBtn: {
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -467,10 +469,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: Colors.PRIMARY,
+    shadowColor: Colors.NAVY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 8,

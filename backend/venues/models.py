@@ -52,6 +52,11 @@ class Venue(models.Model):
         null=True,
         verbose_name="image URL",
     )
+    booking_url = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name="booking URL",
+    )
     is_active = models.BooleanField(
         default=True,
         verbose_name="active",

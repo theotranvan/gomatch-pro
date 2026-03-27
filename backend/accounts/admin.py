@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
 
-from accounts.models import User, PlayerProfile
+from accounts.models import User, PlayerProfile, Connection
 
 
 class PlayerProfileInline(admin.StackedInline):
@@ -126,3 +126,11 @@ class UserAdmin(BaseUserAdmin):
     def verify_users(self, request, queryset):
         updated = queryset.update(is_verified=True)
         self.message_user(request, f"{updated} user(s) verified.")
+
+
+@admin.register(Connection)
+class ConnectionAdmin(admin.ModelAdmin):
+    list_display = ("requester", "receiver", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("requester__first_name", "receiver__first_name")
+    readonly_fields = ("id", "created_at", "updated_at")

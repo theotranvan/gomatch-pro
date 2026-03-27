@@ -148,8 +148,8 @@ export function TournamentListScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.PRIMARY}
-            colors={[Colors.PRIMARY]}
+            tintColor={Colors.NAVY}
+            colors={[Colors.NAVY]}
           />
         }
         renderItem={({ item }) => (
@@ -193,7 +193,7 @@ const s = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: Colors.PRIMARY,
+    borderBottomColor: Colors.NAVY,
   },
   tabText: {
     fontSize: 13,
@@ -201,7 +201,7 @@ const s = StyleSheet.create({
     color: Colors.TEXT_SECONDARY,
   },
   tabTextActive: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
   filterRow: {
     flexDirection: "row",
@@ -219,7 +219,7 @@ const s = StyleSheet.create({
     backgroundColor: "#FAFAFA",
   },
   filterChipActive: {
-    borderColor: Colors.PRIMARY,
+    borderColor: Colors.NAVY,
     backgroundColor: "#E8F5EE",
   },
   filterText: {
@@ -228,7 +228,7 @@ const s = StyleSheet.create({
     color: Colors.TEXT_SECONDARY,
   },
   filterTextActive: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
   list: {
     padding: 16,

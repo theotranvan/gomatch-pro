@@ -8,10 +8,12 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { AuthStackParamList } from "../../navigation/AuthStack";
 import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
+import { FONT_SIZES, BUTTON_RADIUS } from "../../constants/theme";
 import { Input } from "../../components/Input";
 import { Button } from "../../components/Button";
 
@@ -26,15 +28,8 @@ export function LoginScreen({ navigation }: Props) {
 
   async function handleLogin() {
     setError("");
-
-    if (!email.trim()) {
-      setError("Veuillez entrer votre email.");
-      return;
-    }
-    if (!password) {
-      setError("Veuillez entrer votre mot de passe.");
-      return;
-    }
+    if (!email.trim()) { setError("Veuillez entrer votre email."); return; }
+    if (!password) { setError("Veuillez entrer votre mot de passe."); return; }
 
     setLoading(true);
     try {
@@ -60,134 +55,114 @@ export function LoginScreen({ navigation }: Props) {
         keyboardShouldPersistTaps="handled"
       >
         {/* Logo */}
-        <View style={styles.logoContainer}>
+        <View style={styles.logoArea}>
           <View style={styles.logoBadge}>
-            <Text style={styles.logoIcon}>🎾</Text>
+            <Ionicons name="tennisball" size={28} color="#FFFFFF" />
           </View>
-          <Text style={styles.title}>GoMatch</Text>
-          <Text style={styles.subtitle}>Tennis & Padel en Suisse</Text>
+          <Text style={styles.logoText}>GoMatch</Text>
+          <Text style={styles.logoSub}>Tennis & Padel en Suisse</Text>
         </View>
+
+        {/* Title */}
+        <Text style={styles.title}>Connexion</Text>
+
+        {/* Error */}
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
         {/* Form */}
-        <View style={styles.form}>
-          {error ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
+        <Input
+          placeholder="Email"
+          value={email}
+          onChangeText={(v) => { setEmail(v); setError(""); }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <Input
+          placeholder="Mot de passe"
+          value={password}
+          onChangeText={(v) => { setPassword(v); setError(""); }}
+          secureTextEntry
+        />
 
-          <Input
-            label="Email"
-            placeholder="votre@email.com"
-            value={email}
-            onChangeText={(v) => { setEmail(v); setError(""); }}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+        <Button
+          title="Se connecter"
+          onPress={handleLogin}
+          loading={loading}
+          style={{ marginTop: 8 }}
+        />
 
-          <Input
-            label="Mot de passe"
-            placeholder="Votre mot de passe"
-            value={password}
-            onChangeText={(v) => { setPassword(v); setError(""); }}
-            secureTextEntry
-          />
-
-          <Button
-            title="Se connecter"
-            onPress={handleLogin}
-            loading={loading}
-            style={styles.button}
-          />
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Register")}
-            style={styles.linkContainer}
-          >
-            <Text style={styles.linkText}>Pas encore de compte ? </Text>
-            <Text style={styles.linkBold}>S'inscrire</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Register")}
+          style={styles.linkRow}
+        >
+          <Text style={styles.linkGray}>Pas encore de compte ? </Text>
+          <Text style={styles.linkBlue}>S'inscrire</Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.BACKGROUND,
-  },
+  container: { flex: 1, backgroundColor: Colors.BACKGROUND },
   inner: {
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 28,
     paddingVertical: 40,
   },
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 48,
-  },
+
+  // Logo
+  logoArea: { alignItems: "center", marginBottom: 40 },
   logoBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: Colors.PRIMARY,
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: Colors.NAVY,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
-    shadowColor: Colors.PRIMARY,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
+    marginBottom: 12,
   },
-  logoIcon: {
-    fontSize: 32,
-  },
-  title: {
-    fontSize: 34,
+  logoText: {
+    fontSize: 30,
     fontWeight: "800",
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     letterSpacing: -0.5,
   },
-  subtitle: {
-    fontSize: 15,
+  logoSub: {
+    fontSize: FONT_SIZES.body,
     color: Colors.TEXT_SECONDARY,
     marginTop: 4,
   },
-  form: {
-    width: "100%",
+
+  // Title
+  title: {
+    fontSize: FONT_SIZES.h1,
+    fontWeight: "700",
+    color: Colors.NAVY,
+    marginBottom: 24,
   },
+
+  // Error
   errorBox: {
     backgroundColor: "#FEF2F2",
-    borderWidth: 1,
-    borderColor: "#FECACA",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  errorText: {
-    color: Colors.ERROR,
-    fontSize: 14,
-    textAlign: "center",
-  },
-  button: {
-    marginTop: 8,
-  },
-  linkContainer: {
+  errorText: { color: Colors.ERROR, fontSize: FONT_SIZES.body, textAlign: "center" },
+
+  // Link
+  linkRow: {
     flexDirection: "row",
     justifyContent: "center",
     marginTop: 24,
   },
-  linkText: {
-    fontSize: 14,
-    color: Colors.TEXT_SECONDARY,
-  },
-  linkBold: {
-    fontSize: 14,
-    color: Colors.PRIMARY,
-    fontWeight: "700",
-  },
+  linkGray: { fontSize: FONT_SIZES.body, color: Colors.TEXT_SECONDARY },
+  linkBlue: { fontSize: FONT_SIZES.body, fontWeight: "700", color: Colors.BLUE },
 });

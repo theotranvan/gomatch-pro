@@ -2,13 +2,18 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
@@ -21,7 +26,7 @@ const CITIES = ["Genève", "Lausanne", "Montreux", "Nyon", "Vevey", "Morges", "A
 type SportSelection = "tennis" | "padel" | "both" | null;
 
 export function EditProfileScreen() {
-  const { profile, updateProfile } = useAuth();
+  const { profile, updateProfile, uploadAvatar } = useAuth();
   const navigation = useNavigation();
 
   // ── Pre-fill from current profile ──
@@ -48,6 +53,44 @@ export function EditProfileScreen() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [changingAvatar, setChangingAvatar] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
+
+  async function handleChangeAvatar() {
+    Alert.alert("Changer la photo", "Choisis une option", [
+      {
+        text: "Galerie",
+        onPress: async () => {
+          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!perm.granted) { Alert.alert("Permission refusée"); return; }
+          const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+          if (!result.canceled) await doUpload(result.assets[0].uri);
+        },
+      },
+      {
+        text: "Caméra",
+        onPress: async () => {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (!perm.granted) { Alert.alert("Permission refusée"); return; }
+          const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+          if (!result.canceled) await doUpload(result.assets[0].uri);
+        },
+      },
+      { text: "Annuler", style: "cancel" },
+    ]);
+  }
+
+  async function doUpload(uri: string) {
+    setChangingAvatar(true);
+    try {
+      const url = await uploadAvatar(uri);
+      setAvatarUri(url);
+    } catch {
+      Alert.alert("Erreur", "Impossible de mettre à jour la photo.");
+    } finally {
+      setChangingAvatar(false);
+    }
+  }
 
   function validate(): boolean {
     setError("");
@@ -174,6 +217,27 @@ export function EditProfileScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
+
+        {/* ── Avatar ── */}
+        <View style={styles.avatarSection}>
+          <TouchableOpacity onPress={handleChangeAvatar} activeOpacity={0.7} disabled={changingAvatar}>
+            <View style={styles.avatarContainer}>
+              {changingAvatar ? (
+                <ActivityIndicator size="large" color={Colors.NAVY} />
+              ) : avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="person" size={40} color={Colors.TEXT_SECONDARY} />
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                <Ionicons name="camera" size={14} color="#FFF" />
+              </View>
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.avatarHint}>Changer la photo</Text>
+        </View>
 
         {/* ── Nom / Prénom ── */}
         <View style={styles.section}>
@@ -344,8 +408,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   chipSelected: {
-    backgroundColor: Colors.PRIMARY + "15",
-    borderColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY + "15",
+    borderColor: Colors.NAVY,
   },
   chipEmoji: {
     fontSize: 16,
@@ -357,7 +421,7 @@ const styles = StyleSheet.create({
     color: Colors.TEXT_SECONDARY,
   },
   chipTextSelected: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
   // ── Mode cards ──
   modeList: {
@@ -373,8 +437,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   modeCardSelected: {
-    backgroundColor: Colors.PRIMARY + "15",
-    borderColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY + "15",
+    borderColor: Colors.NAVY,
   },
   modeEmoji: {
     fontSize: 24,
@@ -389,12 +453,58 @@ const styles = StyleSheet.create({
     color: Colors.TEXT,
   },
   modeLabelSelected: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
   modeDesc: {
     fontSize: 13,
     color: Colors.TEXT_SECONDARY,
     marginTop: 2,
+  },
+  // ── Avatar ──
+  avatarSection: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  avatarContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.BORDER,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#F5F5F5",
+  },
+  avatarHint: {
+    marginTop: 8,
+    fontSize: 13,
+    color: Colors.NAVY,
+    fontWeight: "600",
   },
   // ── Save ──
   saveButton: {

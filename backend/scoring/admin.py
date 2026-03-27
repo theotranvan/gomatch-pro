@@ -1,8 +1,9 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from core.enums import ScoreStatus
+from core.enums import PlayMode, ScoreStatus
 from scoring.models import Ranking, Score
+from scoring.services import RankingService
 
 
 @admin.register(Score)
@@ -26,15 +27,17 @@ class ScoreAdmin(admin.ModelAdmin):
         "winner__first_name",
         "winner__last_name",
     )
-    readonly_fields = ("id", "created_at")
-    list_select_related = ("match", "submitted_by", "confirmed_by", "winner")
+    readonly_fields = ("id", "created_at", "resolved_by")
+    list_select_related = ("match", "submitted_by", "confirmed_by", "winner", "resolved_by")
     list_per_page = 25
     date_hierarchy = "created_at"
+    actions = ["resolve_confirm", "resolve_reject"]
 
     fieldsets = (
         (None, {"fields": ("match", "status")}),
         ("Score details", {"fields": ("sets", "winner")}),
         ("Submission", {"fields": ("submitted_by", "confirmed_by", "confirmed_at")}),
+        ("Resolution", {"fields": ("admin_note", "resolved_by")}),
         ("Metadata", {"fields": ("id", "created_at"), "classes": ("collapse",)}),
     )
 
@@ -44,6 +47,8 @@ class ScoreAdmin(admin.ModelAdmin):
             ScoreStatus.PENDING: "#ffc107",
             ScoreStatus.CONFIRMED: "#28a745",
             ScoreStatus.DISPUTED: "#dc3545",
+            ScoreStatus.EXPIRED: "#6c757d",
+            ScoreStatus.REJECTED: "#dc3545",
         }
         color = colors.get(obj.status, "#6c757d")
         return format_html(
@@ -59,6 +64,36 @@ class ScoreAdmin(admin.ModelAdmin):
             return "—"
         parts = [f"{s['team_a']}-{s['team_b']}" for s in obj.sets]
         return " / ".join(parts)
+
+    @admin.action(description="Résoudre le litige → Confirmer le score")
+    def resolve_confirm(self, request, queryset):
+        from django.utils import timezone
+        count = 0
+        for score in queryset.filter(status=ScoreStatus.DISPUTED):
+            score.status = ScoreStatus.CONFIRMED
+            score.confirmed_by = request.user
+            score.confirmed_at = timezone.now()
+            score.resolved_by = request.user
+            score.admin_note = "Confirmé via l'admin"
+            score.save(update_fields=[
+                "status", "confirmed_by", "confirmed_at",
+                "resolved_by", "admin_note",
+            ])
+            if score.match.play_mode == PlayMode.COMPETITIVE:
+                RankingService.update_rankings(score)
+            count += 1
+        self.message_user(request, f"{count} score(s) confirmé(s).")
+
+    @admin.action(description="Résoudre le litige → Rejeter le score")
+    def resolve_reject(self, request, queryset):
+        count = 0
+        for score in queryset.filter(status=ScoreStatus.DISPUTED):
+            score.status = ScoreStatus.REJECTED
+            score.resolved_by = request.user
+            score.admin_note = "Rejeté via l'admin"
+            score.save(update_fields=["status", "resolved_by", "admin_note"])
+            count += 1
+        self.message_user(request, f"{count} score(s) rejeté(s).")
 
 
 @admin.register(Ranking)

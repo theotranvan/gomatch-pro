@@ -53,10 +53,7 @@ class MatchListSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def get_created_by_name(self, obj):
-        profile = obj.created_by.profile
-        if profile.first_name or profile.last_name:
-            return f"{profile.first_name} {profile.last_name}".strip()
-        return obj.created_by.email
+        return obj.created_by.profile.display_name
 
     def get_current_participants_count(self, obj):
         return obj.current_participants_count
@@ -92,10 +89,7 @@ class MatchDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def get_created_by_name(self, obj):
-        profile = obj.created_by.profile
-        if profile.first_name or profile.last_name:
-            return f"{profile.first_name} {profile.last_name}".strip()
-        return obj.created_by.email
+        return obj.created_by.profile.display_name
 
     def get_current_participants_count(self, obj):
         return obj.current_participants_count
@@ -160,10 +154,7 @@ class OpenMatchListSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def get_created_by_name(self, obj):
-        profile = obj.match.created_by.profile
-        if profile.first_name or profile.last_name:
-            return f"{profile.first_name} {profile.last_name}".strip()
-        return obj.match.created_by.email
+        return obj.match.created_by.profile.display_name
 
 
 class OpenMatchDetailSerializer(serializers.ModelSerializer):
@@ -206,10 +197,7 @@ class OpenMatchDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def get_created_by_name(self, obj):
-        profile = obj.match.created_by.profile
-        if profile.first_name or profile.last_name:
-            return f"{profile.first_name} {profile.last_name}".strip()
-        return obj.match.created_by.email
+        return obj.match.created_by.profile.display_name
 
     def get_current_participants_count(self, obj):
         return obj.match.current_participants_count

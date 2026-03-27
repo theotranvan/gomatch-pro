@@ -1,6 +1,7 @@
 from django.urls import path
 
 from scoring.views import (
+    AdminResolveView,
     ConfirmScoreView,
     DisputeScoreView,
     MyRankingsView,
@@ -11,6 +12,7 @@ from scoring.stats_views import MyStatsView, PlayerStatsView
 urlpatterns = [
     path("<uuid:pk>/confirm/", ConfirmScoreView.as_view(), name="confirm-score"),
     path("<uuid:pk>/dispute/", DisputeScoreView.as_view(), name="dispute-score"),
+    path("<uuid:pk>/admin-resolve/", AdminResolveView.as_view(), name="admin-resolve-score"),
 ]
 
 # Ranking URLs are registered separately in root urls.py

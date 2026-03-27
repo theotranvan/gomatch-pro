@@ -9,6 +9,7 @@ class ScoreSerializer(serializers.ModelSerializer):
     submitted_by = serializers.UUIDField(source="submitted_by.id", read_only=True)
     confirmed_by = serializers.SerializerMethodField()
     winner = serializers.SerializerMethodField()
+    resolved_by = serializers.SerializerMethodField()
 
     class Meta:
         model = Score
@@ -22,9 +23,16 @@ class ScoreSerializer(serializers.ModelSerializer):
             "status",
             "confirmed_by",
             "confirmed_at",
+            "admin_note",
+            "resolved_by",
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_resolved_by(self, obj):
+        if obj.resolved_by:
+            return str(obj.resolved_by.id)
+        return None
 
     def get_confirmed_by(self, obj):
         if obj.confirmed_by:
@@ -45,6 +53,13 @@ class SubmitScoreSerializer(serializers.Serializer):
         min_length=1,
         help_text='List of set scores, e.g. [{"team_a": 6, "team_b": 4}]',
     )
+
+
+class AdminResolveSerializer(serializers.Serializer):
+    """Write serializer for admin dispute resolution."""
+
+    action = serializers.ChoiceField(choices=["confirm", "reject"])
+    admin_note = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class RankingSerializer(serializers.ModelSerializer):
@@ -73,7 +88,4 @@ class RankingSerializer(serializers.ModelSerializer):
         return getattr(obj, "computed_rank", obj.rank_position)
 
     def get_player_name(self, obj):
-        profile = obj.player
-        if profile.first_name:
-            return f"{profile.first_name} {profile.last_name}".strip()
-        return profile.user.email
+        return obj.player.display_name

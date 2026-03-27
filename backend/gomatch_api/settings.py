@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "drf_spectacular",
+    "cloudinary",
+    "cloudinary_storage",
     # Local apps
     "core",
     "accounts",
@@ -56,6 +58,7 @@ INSTALLED_APPS = [
     "bookings",
     "payments",
     "competitions",
+    "events",
 ]
 
 MIDDLEWARE = [
@@ -221,6 +224,18 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# --------------------------------------------------------------------------
+# Cloudinary (avatar uploads)
+# --------------------------------------------------------------------------
+
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": os.environ.get("CLOUDINARY_CLOUD_NAME", ""),
+    "API_KEY": os.environ.get("CLOUDINARY_API_KEY", ""),
+    "API_SECRET": os.environ.get("CLOUDINARY_API_SECRET", ""),
+}
+
+DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
 
 
 # --------------------------------------------------------------------------

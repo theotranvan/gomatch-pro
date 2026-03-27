@@ -24,7 +24,7 @@ export function OpenMatchesStack() {
       <Stack.Screen
         name="OpenMatchesMain"
         component={OpenMatchesScreen}
-        options={{ title: "Open Matchs" }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="CreateOpenMatch"

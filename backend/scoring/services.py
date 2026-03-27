@@ -150,9 +150,13 @@ class ScoreService:
                 "Score can only be submitted for completed or in-progress matches."
             )
 
-        # 3. Check existing score
-        if Score.objects.filter(match=match).exists():
-            raise ValueError("A score has already been submitted for this match.")
+        # 3. Check existing score — allow re-submit if expired or rejected
+        existing = Score.objects.filter(match=match).first()
+        if existing:
+            if existing.status in (ScoreStatus.EXPIRED, ScoreStatus.REJECTED):
+                existing.delete()
+            else:
+                raise ValueError("A score has already been submitted for this match.")
 
         # 4. Determine winner
         winner_profile, winning_team = ScoreService._determine_winner(
@@ -276,6 +280,63 @@ class ScoreService:
         # 3. Dispute
         score.status = ScoreStatus.DISPUTED
         score.save(update_fields=["status"])
+
+        return score
+
+    @staticmethod
+    def admin_resolve(admin_user, score_id, action, admin_note=""):
+        """
+        Admin resolves a disputed score.
+        action: 'confirm' → CONFIRMED (+ ranking update)
+                'reject'  → REJECTED  (allows re-submission)
+        """
+        try:
+            score = Score.objects.select_related("match").get(pk=score_id)
+        except Score.DoesNotExist:
+            raise ValueError("Score not found.")
+
+        if score.status != ScoreStatus.DISPUTED:
+            raise ValueError("Only disputed scores can be resolved.")
+
+        score.admin_note = admin_note
+        score.resolved_by = admin_user
+
+        if action == "confirm":
+            score.status = ScoreStatus.CONFIRMED
+            score.confirmed_by = admin_user
+            score.confirmed_at = timezone.now()
+            score.save(update_fields=[
+                "status", "admin_note", "resolved_by",
+                "confirmed_by", "confirmed_at",
+            ])
+            # Update rankings for competitive matches
+            if score.match.play_mode == PlayMode.COMPETITIVE:
+                RankingService.update_rankings(score)
+        else:
+            score.status = ScoreStatus.REJECTED
+            score.save(update_fields=["status", "admin_note", "resolved_by"])
+
+        # Notify participants
+        participant_ids = list(
+            MatchParticipant.objects.filter(
+                match=score.match, status=ParticipantStatus.ACCEPTED,
+            ).values_list("player__user_id", flat=True)
+        )
+        if participant_ids:
+            if action == "confirm":
+                NotificationService.send_push(
+                    user_ids=participant_ids,
+                    title="Litige résolu",
+                    body="L'admin a validé le score. Classement mis à jour.",
+                    data={"type": "score", "match_id": str(score.match.pk)},
+                )
+            else:
+                NotificationService.send_push(
+                    user_ids=participant_ids,
+                    title="Litige résolu",
+                    body="L'admin a rejeté le score. Vous pouvez soumettre un nouveau score.",
+                    data={"type": "score", "match_id": str(score.match.pk)},
+                )
 
         return score
 

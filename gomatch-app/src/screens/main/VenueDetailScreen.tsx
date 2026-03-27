@@ -8,7 +8,8 @@ import {
   Image,
   Linking,
 } from "react-native";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/colors";
 import { venuesService } from "../../services/venues";
@@ -16,6 +17,7 @@ import { LoadingScreen } from "../../components/LoadingScreen";
 import { NetworkError } from "../../components/NetworkError";
 import { ErrorState } from "../../components/ErrorState";
 import { isNetworkError } from "../../utils/network";
+import type { VenuesStackParamList } from "../../navigation/VenuesStack";
 import type { Venue, Court } from "../../types";
 
 const SURFACE_LABELS: Record<string, string> = {
@@ -44,6 +46,7 @@ function getPlaceholderColor(id: string) {
 
 export function VenueDetailScreen() {
   const route = useRoute<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<VenuesStackParamList>>();
   const venueId: string = route.params?.venueId;
 
   const [venue, setVenue] = useState<Venue | null>(null);
@@ -95,7 +98,7 @@ export function VenueDetailScreen() {
             { backgroundColor: getPlaceholderColor(venue.id) },
           ]}
         >
-          <Ionicons name="business" size={56} color={Colors.PRIMARY} />
+          <Ionicons name="business" size={56} color={Colors.NAVY} />
         </View>
       )}
 
@@ -120,7 +123,7 @@ export function VenueDetailScreen() {
             onPress={() => Linking.openURL(`tel:${venue.phone}`)}
             activeOpacity={0.7}
           >
-            <Ionicons name="call-outline" size={18} color={Colors.PRIMARY} />
+            <Ionicons name="call-outline" size={18} color={Colors.NAVY} />
             <Text style={[styles.infoText, styles.linkText]}>
               {venue.phone}
             </Text>
@@ -133,13 +136,33 @@ export function VenueDetailScreen() {
             onPress={() => Linking.openURL(venue.website_url!)}
             activeOpacity={0.7}
           >
-            <Ionicons name="globe-outline" size={18} color={Colors.PRIMARY} />
+            <Ionicons name="globe-outline" size={18} color={Colors.NAVY} />
             <Text style={[styles.infoText, styles.linkText]} numberOfLines={1}>
               {venue.website_url.replace(/^https?:\/\//, "")}
             </Text>
           </TouchableOpacity>
         ) : null}
       </View>
+
+      {/* ── Booking button ── */}
+      {venue.booking_url ? (
+        <View style={styles.bookingSection}>
+          <TouchableOpacity
+            style={styles.bookingButton}
+            onPress={() =>
+              navigation.navigate("ClubBookingWebView", {
+                venueId: venue.id,
+                venueName: venue.name,
+                bookingUrl: venue.booking_url!,
+              })
+            }
+            activeOpacity={0.8}
+          >
+            <Ionicons name="calendar-outline" size={20} color="#fff" />
+            <Text style={styles.bookingButtonText}>Réserver sur le site du club</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {/* ── Courts section ── */}
       <View style={styles.courtsSection}>
@@ -299,8 +322,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   linkText: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     fontWeight: "600",
+  },
+
+  // ── Booking ──
+  bookingSection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  bookingButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: Colors.NAVY,
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  bookingButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
   },
 
   // ── Courts section ──
@@ -330,7 +373,7 @@ const styles = StyleSheet.create({
     color: Colors.TEXT,
   },
   sportBadge: {
-    backgroundColor: Colors.PRIMARY + "15",
+    backgroundColor: Colors.NAVY + "15",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
@@ -338,7 +381,7 @@ const styles = StyleSheet.create({
   sportBadgeText: {
     fontSize: 12,
     fontWeight: "700",
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
 
   // ── Court card ──
@@ -401,11 +444,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   priceChip: {
-    backgroundColor: Colors.PRIMARY + "12",
+    backgroundColor: Colors.NAVY + "12",
   },
   priceText: {
     fontSize: 13,
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     fontWeight: "700",
   },
 

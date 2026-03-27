@@ -4,6 +4,8 @@ import { ProfileScreen } from "../screens/main/ProfileScreen";
 import { EditProfileScreen } from "../screens/main/EditProfileScreen";
 import { BookingDetailScreen } from "../screens/main/BookingDetailScreen";
 import { StatsScreen } from "../screens/main/StatsScreen";
+import { ConnectionsListScreen } from "../screens/main/ConnectionsListScreen";
+import { PendingRequestsScreen } from "../screens/main/PendingRequestsScreen";
 import { Colors } from "../constants/colors";
 
 export type ProfileStackParamList = {
@@ -11,6 +13,8 @@ export type ProfileStackParamList = {
   EditProfile: undefined;
   BookingDetail: { bookingId: string };
   PlayerStats: { playerId?: string };
+  ConnectionsList: undefined;
+  PendingRequests: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -44,6 +48,16 @@ export function ProfileStack() {
         name="PlayerStats"
         component={StatsScreen}
         options={{ title: "Statistiques" }}
+      />
+      <Stack.Screen
+        name="ConnectionsList"
+        component={ConnectionsListScreen}
+        options={{ title: "Mes connexions" }}
+      />
+      <Stack.Screen
+        name="PendingRequests"
+        component={PendingRequestsScreen}
+        options={{ title: "Demandes reçues" }}
       />
     </Stack.Navigator>
   );

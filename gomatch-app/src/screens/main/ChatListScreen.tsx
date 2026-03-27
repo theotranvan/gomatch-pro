@@ -7,11 +7,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import { chatService } from "../../services/chat";
 import { Colors } from "../../constants/colors";
+import { FONT_SIZES, CARD_RADIUS } from "../../constants/theme";
+import { Avatar } from "../../components/Avatar";
 import { LoadingScreen } from "../../components/LoadingScreen";
 import { EmptyState } from "../../components/EmptyState";
 import { NetworkError } from "../../components/NetworkError";
@@ -21,13 +22,6 @@ import type { ChatRoom } from "../../types";
 import type { ChatStackParamList } from "../../navigation/ChatStack";
 
 type Nav = NativeStackNavigationProp<ChatStackParamList, "ChatList">;
-
-const ROOM_EMOJI: Record<string, string> = {
-  match: "🎾",
-  open_match: "🟢",
-  tournament: "🏆",
-  direct: "💬",
-};
 
 function formatRoomName(room: ChatRoom): string {
   if (room.participants_names.length > 0) {
@@ -43,21 +37,11 @@ function formatDate(dateStr: string): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return date.toLocaleTimeString("fr-CH", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
+  if (diffDays === 0)
+    return date.toLocaleTimeString("fr-CH", { hour: "2-digit", minute: "2-digit" });
   if (diffDays === 1) return "Hier";
-  if (diffDays < 7) {
-    return date.toLocaleDateString("fr-CH", { weekday: "short" });
-  }
-  return date.toLocaleDateString("fr-CH", {
-    day: "2-digit",
-    month: "2-digit",
-  });
+  if (diffDays < 7) return date.toLocaleDateString("fr-CH", { weekday: "short" });
+  return date.toLocaleDateString("fr-CH", { day: "2-digit", month: "2-digit" });
 }
 
 function truncate(text: string, max: number): string {
@@ -89,14 +73,10 @@ export function ChatListScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchRooms();
-  }, [fetchRooms]);
+  useEffect(() => { fetchRooms(); }, [fetchRooms]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
-      fetchRooms();
-    });
+    const unsubscribe = navigation.addListener("focus", () => { fetchRooms(); });
     return unsubscribe;
   }, [navigation, fetchRooms]);
 
@@ -106,8 +86,8 @@ export function ChatListScreen() {
   }, [fetchRooms]);
 
   const renderItem = ({ item }: { item: ChatRoom }) => {
-    const emoji = ROOM_EMOJI[item.room_type] ?? "💬";
     const name = formatRoomName(item);
+    const displayName = item.participants_names[0] ?? "Chat";
     const lastMsg = item.last_message;
     const lastMsgText = lastMsg
       ? lastMsg.message_type === "system"
@@ -119,7 +99,7 @@ export function ChatListScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.roomCard}
+        style={styles.row}
         activeOpacity={0.7}
         onPress={() =>
           navigation.navigate("ChatRoom", {
@@ -129,37 +109,30 @@ export function ChatListScreen() {
           })
         }
       >
-        <View style={[styles.avatar, hasUnread && styles.avatarUnread]}>
-          <Text style={styles.avatarEmoji}>{emoji}</Text>
-        </View>
+        <Avatar name={displayName} size="md" />
 
-        <View style={styles.roomContent}>
-          <View style={styles.roomHeader}>
+        <View style={styles.rowContent}>
+          <View style={styles.rowTop}>
             <Text
-              style={[styles.roomName, hasUnread && styles.roomNameUnread]}
+              style={[styles.rowName, hasUnread && styles.rowNameBold]}
               numberOfLines={1}
             >
               {name}
             </Text>
-            <Text
-              style={[styles.roomDate, hasUnread && styles.roomDateUnread]}
-            >
+            <Text style={[styles.rowDate, hasUnread && styles.rowDateActive]}>
               {lastDate}
             </Text>
           </View>
-          <View style={styles.roomFooter}>
+          <View style={styles.rowBottom}>
             <Text
-              style={[
-                styles.lastMessage,
-                hasUnread && styles.lastMessageUnread,
-              ]}
+              style={[styles.rowMsg, hasUnread && styles.rowMsgBold]}
               numberOfLines={1}
             >
               {lastMsgText}
             </Text>
             {hasUnread && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>
                   {item.unread_count > 99 ? "99+" : item.unread_count}
                 </Text>
               </View>
@@ -170,14 +143,11 @@ export function ChatListScreen() {
     );
   };
 
-  if (loading) {
-    return <LoadingScreen message="Chargement des conversations…" />;
-  }
+  if (loading) return <LoadingScreen message="Chargement des conversations…" />;
 
   if (error && rooms.length === 0) {
-    if (isNetworkError(error)) {
+    if (isNetworkError(error))
       return <NetworkError onRetry={() => { setLoading(true); fetchRooms(); }} />;
-    }
     return <ErrorState message="Impossible de charger les conversations" onRetry={() => { setLoading(true); fetchRooms(); }} />;
   }
 
@@ -199,8 +169,8 @@ export function ChatListScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.PRIMARY}
-            colors={[Colors.PRIMARY]}
+            tintColor={Colors.NAVY}
+            colors={[Colors.NAVY]}
           />
         }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -210,122 +180,66 @@ export function ChatListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.BACKGROUND,
-  },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: Colors.BACKGROUND,
-  },
-  loadingText: {
-    color: Colors.TEXT_SECONDARY,
-    fontSize: 16,
-  },
-  roomCard: {
+  container: { flex: 1, backgroundColor: Colors.BACKGROUND },
+  emptyContainer: { flex: 1 },
+
+  // ── Row ──
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: Colors.BACKGROUND,
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#F0F0F0",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  avatarUnread: {
-    backgroundColor: "#E8F5E9",
-  },
-  avatarEmoji: {
-    fontSize: 24,
-  },
-  roomContent: {
-    flex: 1,
-  },
-  roomHeader: {
+  rowContent: { flex: 1, marginLeft: 14 },
+  rowTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 4,
   },
-  roomName: {
-    fontSize: 16,
+  rowName: {
+    fontSize: FONT_SIZES.h3,
     fontWeight: "500",
     color: Colors.TEXT,
     flex: 1,
     marginRight: 8,
   },
-  roomNameUnread: {
-    fontWeight: "700",
-  },
-  roomDate: {
-    fontSize: 13,
-    color: Colors.TEXT_SECONDARY,
-  },
-  roomDateUnread: {
-    color: Colors.PRIMARY,
-    fontWeight: "600",
-  },
-  roomFooter: {
+  rowNameBold: { fontWeight: "700" },
+  rowDate: { fontSize: FONT_SIZES.caption, color: Colors.TEXT_SECONDARY },
+  rowDateActive: { color: Colors.BLUE, fontWeight: "600" },
+  rowBottom: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  lastMessage: {
-    fontSize: 14,
+  rowMsg: {
+    fontSize: FONT_SIZES.body,
     color: Colors.TEXT_SECONDARY,
     flex: 1,
     marginRight: 8,
   },
-  lastMessageUnread: {
-    color: Colors.TEXT,
-    fontWeight: "500",
-  },
-  badge: {
-    backgroundColor: Colors.PRIMARY,
+  rowMsgBold: { color: Colors.TEXT, fontWeight: "500" },
+
+  // ── Unread badge ──
+  unreadBadge: {
+    backgroundColor: Colors.BLUE,
     borderRadius: 12,
-    minWidth: 24,
-    height: 24,
+    minWidth: 22,
+    height: 22,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
   },
-  badgeText: {
+  unreadBadgeText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
   },
+
+  // ── Separator ──
   separator: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     backgroundColor: Colors.BORDER,
-    marginLeft: 82,
-  },
-  emptyContainer: {
-    flex: 1,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.TEXT,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.TEXT_SECONDARY,
-    textAlign: "center",
+    marginLeft: 78,
   },
 });

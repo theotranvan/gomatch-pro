@@ -1,139 +1,135 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "../constants/colors";
-import type { MatchListItem, MatchStatus } from "../types";
+import { LinearGradient } from "expo-linear-gradient";
+import { Avatar } from "./Avatar";
+import { CARD_RADIUS, CARD_SHADOW, FONT_SIZES } from "../constants/theme";
+import type { MatchListItem } from "../types";
 import { formatDate, formatTime } from "../utils/helpers";
-
-const STATUS_CONFIG: Record<MatchStatus, { label: string; color: string }> = {
-  draft: { label: "Brouillon", color: Colors.TEXT_SECONDARY },
-  open: { label: "Ouvert", color: "#2563EB" },
-  confirmed: { label: "Confirmé", color: Colors.PRIMARY },
-  in_progress: { label: "En cours", color: "#F59E0B" },
-  completed: { label: "Terminé", color: Colors.SUCCESS },
-  cancelled: { label: "Annulé", color: Colors.ERROR },
-};
 
 interface MatchCardProps {
   match: MatchListItem;
   onPress?: () => void;
 }
 
+function sessionDate(date: string, time: string): string {
+  const d = new Date(date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dDate = new Date(d);
+  dDate.setHours(0, 0, 0, 0);
+
+  let label: string;
+  if (dDate.getTime() === today.getTime()) label = "Aujourd'hui";
+  else if (dDate.getTime() === tomorrow.getTime()) label = "Demain";
+  else label = formatDate(date);
+
+  return `${label} ${formatTime(time)}`;
+}
+
 export function MatchCard({ match, onPress }: MatchCardProps) {
-  const statusCfg = STATUS_CONFIG[match.status];
+  const isFriendly = match.play_mode === "friendly";
+  const isPadel = match.sport === "padel";
+  const gradientColors: [string, string] = isFriendly
+    ? ["#2E8B57", "#1A3A5C"]
+    : ["#3B82F6", "#1A3A5C"];
+  const spotsLeft = match.max_participants - match.current_participants_count;
 
   return (
     <TouchableOpacity
-      style={styles.card}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.85}
       disabled={!onPress}
     >
-      {/* Left: sport icon */}
-      <View style={styles.sportBadge}>
-        <Text style={styles.sportEmoji}>
-          {match.sport === "tennis" ? "🎾" : "🏓"}
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.card}
+      >
+        <Text style={styles.title}>
+          {isFriendly ? "Match Amical" : "Match Compétition"}
         </Text>
-      </View>
-
-      {/* Center: info */}
-      <View style={styles.info}>
-        <View style={styles.topRow}>
-          <Text style={styles.title} numberOfLines={1}>
-            {match.match_type === "singles" ? "Simple" : "Double"} · {match.created_by_name}
-          </Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusCfg.color + "18" }]}>
-            <Text style={[styles.statusText, { color: statusCfg.color }]}>
-              {statusCfg.label}
-            </Text>
+        <Text style={styles.meta}>
+          {isPadel ? "🏓 Padel" : "🎾 Tennis"} •{" "}
+          {sessionDate(match.scheduled_date, match.scheduled_time)}
+        </Text>
+        <View style={styles.bottom}>
+          <View style={styles.avatarRow}>
+            <Avatar name={match.created_by_name} size="sm" />
+            {match.current_participants_count > 1 && (
+              <View style={styles.avatarOverlap}>
+                <Avatar
+                  name={`P${match.current_participants_count}`}
+                  size="sm"
+                />
+              </View>
+            )}
+            {spotsLeft > 0 && (
+              <View style={styles.plusBadge}>
+                <Text style={styles.plusText}>+{spotsLeft}</Text>
+              </View>
+            )}
           </View>
-        </View>
-
-        <View style={styles.metaRow}>
-          <Ionicons name="calendar-outline" size={13} color={Colors.TEXT_SECONDARY} />
-          <Text style={styles.meta}>
-            {formatDate(match.scheduled_date)} · {formatTime(match.scheduled_time)}
+          <Text style={styles.players}>
+            {match.current_participants_count}/{match.max_participants}
           </Text>
         </View>
-
-        <View style={styles.metaRow}>
-          <Ionicons name="people-outline" size={13} color={Colors.TEXT_SECONDARY} />
-          <Text style={styles.meta}>
-            {match.current_participants_count}/{match.max_participants} joueurs
-          </Text>
-        </View>
-      </View>
-
-      {/* Right: chevron */}
-      {onPress && (
-        <Ionicons name="chevron-forward" size={18} color={Colors.BORDER} style={styles.chevron} />
-      )}
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: Colors.BACKGROUND,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sportBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: Colors.PRIMARY + "12",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  sportEmoji: {
-    fontSize: 22,
-  },
-  info: {
-    flex: 1,
-  },
-  topRow: {
-    flexDirection: "row",
+    width: 280,
+    height: 140,
+    borderRadius: CARD_RADIUS,
+    padding: 16,
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
+    marginRight: 12,
+    marginBottom: 10,
+    ...CARD_SHADOW,
   },
   title: {
-    fontSize: 15,
+    fontSize: FONT_SIZES.h3,
     fontWeight: "700",
-    color: Colors.TEXT,
-    flex: 1,
-    marginRight: 8,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 2,
+    color: "#FFFFFF",
   },
   meta: {
-    fontSize: 12,
-    color: Colors.TEXT_SECONDARY,
-    marginLeft: 5,
+    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
   },
-  chevron: {
-    marginLeft: 4,
+  bottom: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  avatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  avatarOverlap: {
+    marginLeft: -8,
+  },
+  plusBadge: {
+    marginLeft: -8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  plusText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  players: {
+    fontSize: FONT_SIZES.caption,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.9)",
   },
 });

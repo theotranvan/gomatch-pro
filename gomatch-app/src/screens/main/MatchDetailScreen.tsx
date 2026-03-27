@@ -39,7 +39,7 @@ import type {
 const STATUS_CONFIG: Record<MatchStatus, { label: string; color: string }> = {
   draft: { label: "Brouillon", color: Colors.TEXT_SECONDARY },
   open: { label: "Ouvert", color: "#2563EB" },
-  confirmed: { label: "Confirmé", color: Colors.PRIMARY },
+  confirmed: { label: "Confirmé", color: Colors.NAVY },
   in_progress: { label: "En cours", color: "#F59E0B" },
   completed: { label: "Terminé", color: Colors.SUCCESS },
   cancelled: { label: "Annulé", color: Colors.ERROR },
@@ -125,10 +125,11 @@ export function MatchDetailScreen() {
     (match.status === "open" || match.status === "confirmed");
 
   // Can submit score if participant and match is in_progress or completed and no score yet
+  // or if existing score is expired/rejected (allows re-submission)
   const canSubmitScore =
     isParticipant &&
     (match?.status === "in_progress" || match?.status === "completed") &&
-    !score;
+    (!score || score.status === "expired" || score.status === "rejected");
 
   // Can confirm/dispute if score is pending and I'm a participant but NOT the submitter
   const canConfirmScore =
@@ -218,8 +219,8 @@ export function MatchDetailScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={Colors.PRIMARY}
-          colors={[Colors.PRIMARY]}
+          tintColor={Colors.NAVY}
+          colors={[Colors.NAVY]}
         />
       }
     >
@@ -406,7 +407,7 @@ export function MatchDetailScreen() {
             }
             activeOpacity={0.7}
           >
-            <Ionicons name="chatbubble-outline" size={20} color={Colors.PRIMARY} />
+            <Ionicons name="chatbubble-outline" size={20} color={Colors.NAVY} />
             <Text style={styles.outlineBtnText}>Ouvrir le chat</Text>
           </TouchableOpacity>
         )}
@@ -473,11 +474,28 @@ function ParticipantRow({ participant }: { participant: MatchParticipant }) {
 const SCORE_STATUS_LABELS: Record<ScoreStatus, { label: string; color: string }> = {
   pending: { label: "En attente de confirmation", color: "#F59E0B" },
   confirmed: { label: "Confirmé", color: Colors.SUCCESS },
-  disputed: { label: "Contesté", color: Colors.ERROR },
+  disputed: { label: "Contesté — en attente de l'admin", color: Colors.ERROR },
+  expired: { label: "Expiré (non confirmé dans les 24h)", color: Colors.TEXT_SECONDARY },
+  rejected: { label: "Rejeté par l'admin", color: Colors.ERROR },
 };
 
 function ScoreSection({ score }: { score: Score }) {
   const scoreCfg = SCORE_STATUS_LABELS[score.status];
+
+  // Calculate hours since submission for pending warning
+  const hoursSinceCreated = score.created_at
+    ? (Date.now() - new Date(score.created_at).getTime()) / (1000 * 60 * 60)
+    : 0;
+  const pendingWarning = score.status === "pending" && hoursSinceCreated > 12;
+
+  const statusIcon =
+    score.status === "confirmed"
+      ? "checkmark-circle"
+      : score.status === "disputed"
+        ? "alert-circle"
+        : score.status === "expired" || score.status === "rejected"
+          ? "close-circle"
+          : "time-outline";
 
   return (
     <>
@@ -486,13 +504,7 @@ function ScoreSection({ score }: { score: Score }) {
         <View style={styles.scoreStatusRow}>
           <View style={[styles.scoreStatusBadge, { backgroundColor: scoreCfg.color + "18" }]}>
             <Ionicons
-              name={
-                score.status === "confirmed"
-                  ? "checkmark-circle"
-                  : score.status === "disputed"
-                    ? "alert-circle"
-                    : "time-outline"
-              }
+              name={statusIcon}
               size={14}
               color={scoreCfg.color}
               style={{ marginRight: 4 }}
@@ -503,11 +515,42 @@ function ScoreSection({ score }: { score: Score }) {
           </View>
         </View>
 
+        {/* Pending > 12h warning */}
+        {pendingWarning && (
+          <View style={styles.warningNotice}>
+            <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+            <Text style={styles.warningText}>
+              En attente de confirmation depuis {Math.floor(hoursSinceCreated)}h
+            </Text>
+          </View>
+        )}
+
+        {/* Expired notice */}
+        {score.status === "expired" && (
+          <View style={styles.expiredNotice}>
+            <Ionicons name="time-outline" size={16} color={Colors.TEXT_SECONDARY} />
+            <Text style={styles.expiredText}>
+              Score expiré (non confirmé dans les 24h). Vous pouvez soumettre un nouveau score.
+            </Text>
+          </View>
+        )}
+
+        {/* Rejected notice */}
+        {score.status === "rejected" && (
+          <View style={styles.disputeNotice}>
+            <Ionicons name="close-circle-outline" size={16} color={Colors.ERROR} />
+            <Text style={styles.disputeText}>
+              Score rejeté par l'admin. Vous pouvez soumettre un nouveau score.
+            </Text>
+          </View>
+        )}
+
+        {/* Disputed notice */}
         {score.status === "disputed" && (
           <View style={styles.disputeNotice}>
             <Ionicons name="warning-outline" size={16} color={Colors.ERROR} />
             <Text style={styles.disputeText}>
-              Score contesté, en attente de résolution
+              Score contesté, en attente de résolution par l'admin
             </Text>
           </View>
         )}
@@ -656,7 +699,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.PRIMARY + "18",
+    backgroundColor: Colors.NAVY + "18",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -667,7 +710,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 14,
     fontWeight: "700",
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
   participantInfo: {
     flex: 1,
@@ -739,6 +782,36 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     flex: 1,
   },
+  warningNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F59E0B" + "10",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+  },
+  warningText: {
+    fontSize: 13,
+    color: "#F59E0B",
+    fontWeight: "500",
+    flex: 1,
+  },
+  expiredNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.TEXT_SECONDARY + "10",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+  },
+  expiredText: {
+    fontSize: 13,
+    color: Colors.TEXT_SECONDARY,
+    fontWeight: "500",
+    flex: 1,
+  },
   setsHeader: {
     flexDirection: "row",
     paddingBottom: 8,
@@ -774,7 +847,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   setScoreWin: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
 
   // ── Actions ──
@@ -787,10 +860,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
     borderRadius: 14,
     paddingVertical: 16,
-    shadowColor: Colors.PRIMARY,
+    shadowColor: Colors.NAVY,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -820,14 +893,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     borderWidth: 2,
-    borderColor: Colors.PRIMARY,
+    borderColor: Colors.NAVY,
     borderRadius: 14,
     paddingVertical: 16,
   },
   outlineBtnText: {
     fontSize: 16,
     fontWeight: "700",
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
   paidBadge: {
     flexDirection: "row",

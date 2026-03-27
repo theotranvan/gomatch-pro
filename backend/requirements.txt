@@ -6,6 +6,8 @@ django-cors-headers
 django-filter
 drf-spectacular
 Pillow
+cloudinary
+django-cloudinary-storage
 factory_boy
 gunicorn
 dj-database-url

@@ -1,7 +1,7 @@
 from django.db.models import Window, F
 from django.db.models.functions import RowNumber
 from rest_framework import generics, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
@@ -9,6 +9,7 @@ from drf_spectacular.utils import extend_schema
 from scoring.filters import RankingFilter
 from scoring.models import Ranking, Score
 from scoring.serializers import (
+    AdminResolveSerializer,
     RankingSerializer,
     ScoreSerializer,
     SubmitScoreSerializer,
@@ -88,6 +89,35 @@ class DisputeScoreView(APIView):
             score = ScoreService.dispute_score(
                 user=request.user,
                 score_id=pk,
+            )
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(ScoreSerializer(score).data)
+
+
+class AdminResolveView(APIView):
+    """POST /api/scores/:id/admin-resolve/ — admin resolves a disputed score."""
+
+    permission_classes = [IsAdminUser]
+
+    @extend_schema(
+        tags=["Scoring"],
+        summary="Admin resolve a disputed score",
+        request=AdminResolveSerializer,
+        responses=ScoreSerializer,
+    )
+    def post(self, request, pk):
+        serializer = AdminResolveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            score = ScoreService.admin_resolve(
+                admin_user=request.user,
+                score_id=pk,
+                action=serializer.validated_data["action"],
+                admin_note=serializer.validated_data.get("admin_note", ""),
             )
         except ValueError as e:
             return Response(

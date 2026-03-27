@@ -15,6 +15,7 @@ interface AuthContextType {
   ) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<PlayerProfile>) => Promise<void>;
+  uploadAvatar: (uri: string) => Promise<string>;
   refreshUser: () => Promise<void>;
 }
 
@@ -27,6 +28,7 @@ export const AuthContext = createContext<AuthContextType>({
   register: async () => {},
   logout: async () => {},
   updateProfile: async () => {},
+  uploadAvatar: async () => "",
   refreshUser: async () => {},
 });
 
@@ -91,6 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(me);
   }
 
+  async function uploadAvatar(uri: string): Promise<string> {
+    const url = await authService.uploadAvatar(uri);
+    const me = await authService.getMe();
+    setUser(me);
+    return url;
+  }
+
   async function refreshUser() {
     const me = await authService.getMe();
     setUser(me);
@@ -106,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       updateProfile,
+      uploadAvatar,
       refreshUser,
     }),
     [user, isLoading],

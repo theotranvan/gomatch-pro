@@ -1,50 +1,42 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { HomeStack } from "./HomeStack";
+import { MatchesStack } from "./MatchesStack";
 import { OpenMatchesStack } from "./OpenMatchesStack";
-import { CreateMatchScreen } from "../screens/main/CreateMatchScreen";
-import { VenuesStack } from "./VenuesStack";
 import { ChatStack } from "./ChatStack";
 import { ProfileStack } from "./ProfileStack";
-import { TournamentsStack } from "./TournamentsStack";
-import { Colors } from "../constants/colors";
 import { useNotifications } from "../hooks/useNotifications";
 
 export type MainTabParamList = {
   Home: undefined;
-  OpenMatches: undefined;
-  CreateMatch: undefined;
-  Tournaments: undefined;
+  Matches: undefined;
+  Activities: undefined;
   Chat: undefined;
-  Venues: undefined;
   Profile: undefined;
 };
+
+const ACTIVE_COLOR = "#3B82F6";
+const INACTIVE_COLOR = "#9CA3AF";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export function MainTabs() {
   useNotifications();
 
+  // TODO: replace with real unread count from chat context/service
+  const unreadMessages = 0;
+
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: Colors.PRIMARY,
-        tabBarInactiveTintColor: Colors.TEXT_SECONDARY,
-        tabBarStyle: {
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
-          borderTopColor: Colors.BORDER,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-        },
-        headerStyle: { backgroundColor: Colors.BACKGROUND },
-        headerTitleStyle: { fontWeight: "bold", color: Colors.TEXT },
-        headerShadowVisible: false,
+        tabBarActiveTintColor: ACTIVE_COLOR,
+        tabBarInactiveTintColor: INACTIVE_COLOR,
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarIconStyle: { marginBottom: -2 },
+        headerShown: false,
       }}
     >
       <Tab.Screen
@@ -52,47 +44,40 @@ export function MainTabs() {
         component={HomeStack}
         options={{
           title: "Accueil",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "home" : "home-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
       <Tab.Screen
-        name="OpenMatches"
+        name="Matches"
+        component={MatchesStack}
+        options={{
+          title: "Matchs",
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "people" : "people-outline"}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Activities"
         component={OpenMatchesStack}
         options={{
-          title: "Open Matchs",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="CreateMatch"
-        component={CreateMatchScreen}
-        options={{
-          title: "Créer",
-          tabBarIcon: ({ focused }) => (
-            <View style={[
-              styles.createButton,
-              focused && styles.createButtonFocused,
-            ]}>
-              <Ionicons name="add" size={28} color="#FFFFFF" />
-            </View>
-          ),
-          tabBarLabel: () => null,
-        }}
-      />
-      <Tab.Screen
-        name="Tournaments"
-        component={TournamentsStack}
-        options={{
-          title: "Tournois",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="trophy-outline" size={size} color={color} />
+          title: "Activités",
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "tennisball" : "tennisball-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -100,21 +85,15 @@ export function MainTabs() {
         name="Chat"
         component={ChatStack}
         options={{
-          title: "Messages",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubble-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Venues"
-        component={VenuesStack}
-        options={{
-          title: "Clubs",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="business-outline" size={size} color={color} />
+          title: "Chat",
+          tabBarBadge: unreadMessages > 0 ? unreadMessages : undefined,
+          tabBarBadgeStyle: styles.badge,
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "chatbubble" : "chatbubble-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -123,9 +102,12 @@ export function MainTabs() {
         component={ProfileStack}
         options={{
           title: "Profil",
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "person" : "person-outline"}
+              size={24}
+              color={color}
+            />
           ),
         }}
       />
@@ -134,21 +116,27 @@ export function MainTabs() {
 }
 
 const styles = StyleSheet.create({
-  createButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: Colors.PRIMARY,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-    shadowColor: Colors.PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
+  tabBar: {
+    height: 60,
+    paddingBottom: 8,
+    paddingTop: 6,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 8,
   },
-  createButtonFocused: {
-    backgroundColor: Colors.PRIMARY_LIGHT,
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  badge: {
+    backgroundColor: "#EF4444",
+    fontSize: 10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
   },
 });

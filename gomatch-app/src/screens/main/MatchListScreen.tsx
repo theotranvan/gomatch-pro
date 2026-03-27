@@ -17,6 +17,7 @@ import { NetworkError } from "../../components/NetworkError";
 import { ErrorState } from "../../components/ErrorState";
 import { matchesService } from "../../services/matches";
 import { isNetworkError } from "../../utils/network";
+import { AppHeader } from "../../components/AppHeader";
 import type { MatchListItem, Sport } from "../../types";
 import type { HomeStackParamList } from "../../navigation/HomeStack";
 
@@ -110,6 +111,7 @@ export function MatchListScreen() {
 
   return (
     <View style={styles.container}>
+      <AppHeader />
       {/* ── Tabs ── */}
       <View style={styles.tabBar}>
         {TABS.map((t) => (
@@ -159,8 +161,8 @@ export function MatchListScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={Colors.PRIMARY}
-            colors={[Colors.PRIMARY]}
+            tintColor={Colors.NAVY}
+            colors={[Colors.NAVY]}
           />
         }
         renderItem={({ item }) => (
@@ -181,7 +183,7 @@ export function MatchListScreen() {
                   : "Aucun match trouvé."
             }
             actionLabel={tab === "upcoming" ? "Créer un match" : undefined}
-            onAction={tab === "upcoming" ? () => navigation.getParent()?.navigate("CreateMatch") : undefined}
+            onAction={tab === "upcoming" ? () => navigation.getParent()?.navigate("Matches", { screen: "CreateMatch" }) : undefined}
           />
         }
       />
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "transparent",
   },
   tabActive: {
-    borderBottomColor: Colors.PRIMARY,
+    borderBottomColor: Colors.NAVY,
   },
   tabText: {
     fontSize: 14,
@@ -220,7 +222,7 @@ const styles = StyleSheet.create({
     color: Colors.TEXT_SECONDARY,
   },
   tabTextActive: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
 
   // ── Filters ──
@@ -240,7 +242,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FAFAFA",
   },
   filterChipActive: {
-    borderColor: Colors.PRIMARY,
+    borderColor: Colors.NAVY,
     backgroundColor: "#E8F5EE",
   },
   filterText: {
@@ -249,7 +251,7 @@ const styles = StyleSheet.create({
     color: Colors.TEXT_SECONDARY,
   },
   filterTextActive: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
 
   // ── List ──

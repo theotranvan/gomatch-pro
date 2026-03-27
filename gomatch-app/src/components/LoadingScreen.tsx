@@ -14,7 +14,7 @@ export function LoadingScreen({ message }: LoadingScreenProps) {
       </View>
       <ActivityIndicator
         size="large"
-        color={Colors.PRIMARY}
+        color={Colors.NAVY}
         style={styles.spinner}
       />
       {message ? <Text style={styles.message}>{message}</Text> : null}
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.PRIMARY + "15",
+    backgroundColor: Colors.NAVY + "15",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,

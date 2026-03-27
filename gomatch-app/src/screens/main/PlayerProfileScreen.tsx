@@ -2,21 +2,25 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/colors";
 import { playersService } from "../../services/players";
+import { connectionsService } from "../../services/connections";
+import { useAuth } from "../../hooks/useAuth";
 import { getInitials } from "../../utils/helpers";
 import { LoadingScreen } from "../../components/LoadingScreen";
 import { NetworkError } from "../../components/NetworkError";
 import { ErrorState } from "../../components/ErrorState";
 import { isNetworkError } from "../../utils/network";
-import type { PlayerProfile, Ranking } from "../../types";
+import type { PlayerProfile, Ranking, ConnectionStatusResult } from "../../types";
 import type { HomeStackParamList } from "../../navigation/HomeStack";
 
 // ── Labels ───────────────────────────────────────────────────────────────────
@@ -34,15 +38,20 @@ const MODE_LABELS: Record<string, string> = {
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function PlayerProfileScreen() {
+  const { user } = useAuth();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<HomeStackParamList, "PlayerProfile">>();
   const { playerId } = route.params;
 
   const [player, setPlayer] = useState<PlayerProfile | null>(null);
   const [rankings, setRankings] = useState<Ranking[]>([]);
+  const [connStatus, setConnStatus] = useState<ConnectionStatusResult>({ status: null, connection_id: null, direction: null });
+  const [connLoading, setConnLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<unknown>(null);
+
+  const isOwnProfile = user?.profile.id === playerId;
 
   const fetchData = useCallback(async () => {
     try {
@@ -59,6 +68,16 @@ export function PlayerProfileScreen() {
         setRankings(rankingsRes.value);
       }
 
+      // Fetch connection status (only if not own profile)
+      if (!isOwnProfile) {
+        try {
+          const cs = await connectionsService.getConnectionStatus(playerId);
+          setConnStatus(cs);
+        } catch {
+          // ignore
+        }
+      }
+
       if (playerRes.status === "rejected") {
         setError(playerRes.reason);
       } else {
@@ -68,7 +87,7 @@ export function PlayerProfileScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [playerId]);
+  }, [playerId, isOwnProfile]);
 
   useEffect(() => {
     fetchData();
@@ -102,6 +121,79 @@ export function PlayerProfileScreen() {
   const winRate =
     totalMatches > 0 ? Math.round((totalWins / totalMatches) * 100) : 0;
 
+  // ── Connection handler ──────────────────────────────────────────────────
+  async function handleConnect() {
+    setConnLoading(true);
+    try {
+      if (connStatus.status === null) {
+        // No connection yet → send request
+        const conn = await connectionsService.sendRequest(playerId);
+        setConnStatus({ status: "pending", connection_id: conn.id, direction: "sent" });
+      } else if (connStatus.status === "pending" && connStatus.direction === "received") {
+        // They sent us a request → accept
+        await connectionsService.accept(connStatus.connection_id!);
+        setConnStatus({ ...connStatus, status: "accepted" });
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setConnLoading(false);
+    }
+  }
+
+  function renderConnectionButton() {
+    if (connLoading) {
+      return (
+        <View style={styles.connBtn}>
+          <ActivityIndicator size="small" color={Colors.NAVY} />
+        </View>
+      );
+    }
+
+    if (connStatus.status === "accepted") {
+      return (
+        <View style={[styles.connBtn, styles.connBtnAccepted]}>
+          <Ionicons name="checkmark-circle" size={18} color={Colors.SUCCESS} />
+          <Text style={[styles.connBtnText, { color: Colors.SUCCESS }]}>Connecté</Text>
+        </View>
+      );
+    }
+
+    if (connStatus.status === "pending") {
+      if (connStatus.direction === "sent") {
+        return (
+          <View style={[styles.connBtn, styles.connBtnPending]}>
+            <Ionicons name="time-outline" size={18} color={Colors.TEXT_SECONDARY} />
+            <Text style={[styles.connBtnText, { color: Colors.TEXT_SECONDARY }]}>En attente</Text>
+          </View>
+        );
+      }
+      // direction === "received" → show accept button
+      return (
+        <TouchableOpacity
+          style={[styles.connBtn, styles.connBtnPrimary]}
+          onPress={handleConnect}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+          <Text style={[styles.connBtnText, { color: "#FFFFFF" }]}>Accepter</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    // No connection or declined → show "Se connecter"
+    return (
+      <TouchableOpacity
+        style={[styles.connBtn, styles.connBtnPrimary]}
+        onPress={handleConnect}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="person-add" size={18} color="#FFFFFF" />
+        <Text style={[styles.connBtnText, { color: "#FFFFFF" }]}>Se connecter</Text>
+      </TouchableOpacity>
+    );
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <ScrollView
@@ -111,21 +203,28 @@ export function PlayerProfileScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={[Colors.PRIMARY]}
-          tintColor={Colors.PRIMARY}
+          colors={[Colors.NAVY]}
+          tintColor={Colors.NAVY}
         />
       }
     >
       {/* Header / Avatar */}
       <View style={styles.header}>
-        <View style={styles.avatarLarge}>
-          <Text style={styles.avatarLargeText}>
-            {getInitials(player.first_name, player.last_name)}
-          </Text>
-        </View>
+        {player.avatar_url ? (
+          <Image source={{ uri: player.avatar_url }} style={styles.avatarLarge} />
+        ) : (
+          <View style={styles.avatarLarge}>
+            <Text style={styles.avatarLargeText}>
+              {getInitials(player.first_name, player.last_name)}
+            </Text>
+          </View>
+        )}
         <Text style={styles.name}>
           {player.first_name} {player.last_name}
         </Text>
+        {player.username ? (
+          <Text style={styles.username}>@{player.username}</Text>
+        ) : null}
         {player.city ? (
           <View style={styles.cityRow}>
             <Ionicons
@@ -136,6 +235,9 @@ export function PlayerProfileScreen() {
             <Text style={styles.cityText}>{player.city}</Text>
           </View>
         ) : null}
+
+        {/* Connection Button */}
+        {!isOwnProfile && renderConnectionButton()}
       </View>
 
       {/* Sports & Levels */}
@@ -167,7 +269,7 @@ export function PlayerProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mode préféré</Text>
           <View style={styles.infoRow}>
-            <Ionicons name="game-controller-outline" size={18} color={Colors.PRIMARY} />
+            <Ionicons name="game-controller-outline" size={18} color={Colors.NAVY} />
             <Text style={styles.infoText}>
               {MODE_LABELS[player.preferred_play_mode]}
             </Text>
@@ -288,7 +390,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.PRIMARY_LIGHT,
+    backgroundColor: Colors.GREEN,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 12,
@@ -312,6 +414,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.TEXT_SECONDARY,
     marginLeft: 4,
+  },
+  username: {
+    fontSize: 14,
+    color: Colors.TEXT_SECONDARY,
+    marginTop: 2,
   },
 
   // Sections
@@ -340,7 +447,7 @@ const styles = StyleSheet.create({
   },
   sportBadgeText: {
     fontSize: 14,
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     fontWeight: "600",
   },
   placeholder: {
@@ -424,7 +531,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
     borderRadius: 12,
     marginHorizontal: 16,
     marginTop: 28,
@@ -435,5 +542,32 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "700",
+  },
+
+  // Connection button
+  connBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 12,
+  },
+  connBtnPrimary: {
+    backgroundColor: Colors.NAVY,
+  },
+  connBtnAccepted: {
+    borderWidth: 1.5,
+    borderColor: Colors.SUCCESS,
+  },
+  connBtnPending: {
+    borderWidth: 1.5,
+    borderColor: Colors.BORDER,
+  },
+  connBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

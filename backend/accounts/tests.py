@@ -1,6 +1,9 @@
 from datetime import date, timedelta
+from unittest.mock import patch, MagicMock
+from io import BytesIO
 
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
@@ -156,31 +159,61 @@ class PlayerProfileTests(TestCase):
     def test_is_profile_complete_true(self):
         """is_profile_complete should return True when all required fields are set."""
         profile = self.user.profile
+        profile.username = "john_doe"
         profile.first_name = "John"
         profile.last_name = "Doe"
         profile.date_of_birth = date(2000, 1, 1)
         profile.city = "Lausanne"
         profile.level_padel = "intermediate"
+        profile.avatar_url = "https://example.com/avatar.jpg"
         profile.save()
         self.assertTrue(profile.is_profile_complete)
 
     def test_is_profile_complete_false_missing_name(self):
         """is_profile_complete should return False when first_name is missing."""
         profile = self.user.profile
+        profile.username = "john_doe2"
         profile.last_name = "Doe"
         profile.date_of_birth = date(2000, 1, 1)
         profile.city = "Lausanne"
         profile.level_tennis = "advanced"
+        profile.avatar_url = "https://example.com/avatar.jpg"
         profile.save()
         self.assertFalse(profile.is_profile_complete)
 
     def test_is_profile_complete_false_no_sport(self):
         """is_profile_complete should return False when no sport level is set."""
         profile = self.user.profile
+        profile.username = "john_doe3"
         profile.first_name = "John"
         profile.last_name = "Doe"
         profile.date_of_birth = date(2000, 1, 1)
         profile.city = "Lausanne"
+        profile.avatar_url = "https://example.com/avatar.jpg"
+        profile.save()
+        self.assertFalse(profile.is_profile_complete)
+
+    def test_is_profile_complete_false_no_username(self):
+        """is_profile_complete should return False when username is missing."""
+        profile = self.user.profile
+        profile.first_name = "John"
+        profile.last_name = "Doe"
+        profile.date_of_birth = date(2000, 1, 1)
+        profile.city = "Lausanne"
+        profile.level_padel = "intermediate"
+        profile.avatar_url = "https://example.com/avatar.jpg"
+        profile.save()
+        self.assertFalse(profile.is_profile_complete)
+
+    def test_is_profile_complete_false_no_avatar(self):
+        """is_profile_complete should return False when avatar_url is missing."""
+        profile = self.user.profile
+        profile.username = "john_doe4"
+        profile.first_name = "John"
+        profile.last_name = "Doe"
+        profile.date_of_birth = date(2000, 1, 1)
+        profile.city = "Lausanne"
+        profile.level_padel = "intermediate"
         profile.save()
         self.assertFalse(profile.is_profile_complete)
 
@@ -395,3 +428,160 @@ class UpdateProfileAPITests(TestCase):
         self.client.patch(self.url, {"first_name": "Test"}, format="json")
         response = self.client.get("/api/auth/me/")
         self.assertEqual(response.data["profile"]["email"], "player@test.com")
+
+
+# ---------------------------------------------------------------------------
+# Username Tests
+# ---------------------------------------------------------------------------
+
+class UsernameTests(TestCase):
+    """Tests for the username field on PlayerProfile."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            email="player@test.com",
+            password="testpass123",
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_username_unique(self):
+        """Two profiles cannot share the same username (case-insensitive)."""
+        self.user.profile.username = "theo_123"
+        self.user.profile.save()
+
+        user2 = User.objects.create_user(email="p2@test.com", password="testpass123")
+        self.client.force_authenticate(user=user2)
+        resp = self.client.patch(
+            "/api/auth/profile/",
+            {"username": "Theo_123"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_username_invalid_chars(self):
+        """Username with special characters should be rejected."""
+        resp = self.client.patch(
+            "/api/auth/profile/",
+            {"username": "th@o!"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_username_too_short(self):
+        """Username shorter than 3 characters should be rejected."""
+        resp = self.client.patch(
+            "/api/auth/profile/",
+            {"username": "ab"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_check_availability_available(self):
+        """check-username should return available=true for free usernames."""
+        resp = self.client.get("/api/auth/check-username/?username=new_user")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(resp.data["available"])
+
+    def test_check_availability_taken(self):
+        """check-username should return available=false for taken usernames."""
+        self.user.profile.username = "taken_user"
+        self.user.profile.save()
+        resp = self.client.get("/api/auth/check-username/?username=Taken_User")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(resp.data["available"])
+
+    def test_username_valid(self):
+        """A valid username should be accepted."""
+        resp = self.client.patch(
+            "/api/auth/profile/",
+            {"username": "cool_player42"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["username"], "cool_player42")
+
+    def test_display_name_with_username(self):
+        """display_name should return @username when set."""
+        self.user.profile.username = "theo"
+        self.user.profile.save()
+        self.assertEqual(self.user.profile.display_name, "@theo")
+
+
+# ---------------------------------------------------------------------------
+# Avatar Upload Tests
+# ---------------------------------------------------------------------------
+
+def _make_image(fmt="JPEG", content_type="image/jpeg", size=(10, 10)):
+    """Create a minimal in-memory image file for upload tests."""
+    from PIL import Image as PILImage
+    buf = BytesIO()
+    PILImage.new("RGB", size, "red").save(buf, fmt)
+    buf.seek(0)
+    return SimpleUploadedFile("avatar.jpg", buf.read(), content_type=content_type)
+
+
+class AvatarUploadTests(TestCase):
+    """Tests for POST /api/auth/upload-avatar/."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.url = "/api/auth/upload-avatar/"
+        self.user = User.objects.create_user(
+            email="player@test.com",
+            password="testpass123",
+        )
+        self.client.force_authenticate(user=self.user)
+
+    @patch("accounts.views.cloudinary.uploader.upload")
+    def test_upload_avatar_success(self, mock_upload):
+        """Valid image upload should store avatar_url and return it."""
+        mock_upload.return_value = {"secure_url": "https://res.cloudinary.com/test/avatar.jpg"}
+        image = _make_image()
+        response = self.client.post(self.url, {"image": image}, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["avatar_url"], "https://res.cloudinary.com/test/avatar.jpg")
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.avatar_url, "https://res.cloudinary.com/test/avatar.jpg")
+
+    def test_upload_avatar_no_image(self):
+        """Request without image file should return 400."""
+        response = self.client.post(self.url, {}, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_upload_avatar_unauthenticated(self):
+        """Unauthenticated request should return 401."""
+        self.client.force_authenticate(user=None)
+        image = _make_image()
+        response = self.client.post(self.url, {"image": image}, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_profile_incomplete_without_avatar(self):
+        """Profile should be incomplete when avatar_url is not set."""
+        p = self.user.profile
+        p.username = "player_1"
+        p.first_name = "Test"
+        p.last_name = "User"
+        p.date_of_birth = date(2000, 1, 1)
+        p.city = "Gen\u00e8ve"
+        p.level_tennis = "beginner"
+        p.save()
+        self.assertFalse(p.is_profile_complete)
+
+    @patch("accounts.views.cloudinary.uploader.upload")
+    def test_profile_complete_with_avatar(self, mock_upload):
+        """Profile should be complete once avatar_url is set."""
+        mock_upload.return_value = {"secure_url": "https://res.cloudinary.com/test/avatar.jpg"}
+        p = self.user.profile
+        p.username = "player_2"
+        p.first_name = "Test"
+        p.last_name = "User"
+        p.date_of_birth = date(2000, 1, 1)
+        p.city = "Gen\u00e8ve"
+        p.level_tennis = "beginner"
+        p.save()
+        # Upload avatar
+        image = _make_image()
+        self.client.post("/api/auth/upload-avatar/", {"image": image}, format="multipart")
+        p.refresh_from_db()
+        self.assertTrue(p.is_profile_complete)

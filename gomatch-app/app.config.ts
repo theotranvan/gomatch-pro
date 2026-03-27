@@ -12,7 +12,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   splash: {
     image: "./assets/splash-icon.png",
     resizeMode: "contain",
-    backgroundColor: "#1B6B4A",
+    backgroundColor: "#1A3A5C",
   },
   ios: {
     supportsTablet: false,
@@ -30,7 +30,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: "./assets/android-icon-foreground.png",
       backgroundImage: "./assets/android-icon-background.png",
       monochromeImage: "./assets/android-icon-monochrome.png",
-      backgroundColor: "#1B6B4A",
+      backgroundColor: "#1A3A5C",
     },
     permissions: [
       "CAMERA",

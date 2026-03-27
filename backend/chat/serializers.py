@@ -23,8 +23,8 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
     def get_sender_name(self, obj):
         profile = getattr(obj.sender, "profile", None)
-        if profile and profile.first_name:
-            return f"{profile.first_name} {profile.last_name}".strip()
+        if profile:
+            return profile.display_name
         return obj.sender.email
 
 

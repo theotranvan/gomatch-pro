@@ -9,6 +9,8 @@ from accounts.views import (
     PlayerDetailView,
     UpdateProfileView,
     RegisterPushTokenView,
+    CheckUsernameView,
+    UploadAvatarView,
 )
 
 app_name = "accounts"
@@ -22,6 +24,8 @@ urlpatterns = [
     path("me/", MeView.as_view(), name="me"),
     path("profile/", UpdateProfileView.as_view(), name="update-profile"),
     path("push-token/", RegisterPushTokenView.as_view(), name="push-token"),
+    path("check-username/", CheckUsernameView.as_view(), name="check-username"),
+    path("upload-avatar/", UploadAvatarView.as_view(), name="upload-avatar"),
 ]
 
 # Player list — mounted separately in root urls.py

@@ -10,6 +10,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
+import { FONT_SIZES, CARD_RADIUS, SECTION_SPACING } from "../../constants/theme";
+import { Avatar } from "../../components/Avatar";
 import { scoringService } from "../../services/scoring";
 import { LoadingScreen } from "../../components/LoadingScreen";
 import { EmptyState } from "../../components/EmptyState";
@@ -18,16 +20,12 @@ import { ErrorState } from "../../components/ErrorState";
 import { isNetworkError } from "../../utils/network";
 import type { Ranking, Sport } from "../../types";
 
-const SPORTS: { key: Sport; label: string }[] = [
-  { key: "tennis", label: "Tennis" },
-  { key: "padel", label: "Padel" },
+const SPORTS: { key: Sport; label: string; icon: keyof typeof Ionicons.glyphMap; bg: string }[] = [
+  { key: "tennis", label: "Tennis", icon: "tennisball", bg: Colors.BLUE },
+  { key: "padel", label: "Padel", icon: "tennisball-outline", bg: Colors.ORANGE },
 ];
 
-const MEDAL_COLORS: Record<number, string> = {
-  1: "#FFD700",
-  2: "#C0C0C0",
-  3: "#CD7F32",
-};
+const MEDAL_EMOJI: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
 export function RankingScreen() {
   const { profile } = useAuth();
@@ -46,23 +44,13 @@ export function RankingScreen() {
         scoringService.getRankings(sport),
         scoringService.getMyRankings(),
       ]);
-
-      if (all.status === "fulfilled") {
-        setRankings(all.value.slice(0, 50));
-      }
-
+      if (all.status === "fulfilled") setRankings(all.value.slice(0, 50));
       if (mine.status === "fulfilled") {
-        const myRank = mine.value.find((r) => r.sport === sport) ?? null;
-        setMyRanking(myRank);
+        setMyRanking(mine.value.find((r) => r.sport === sport) ?? null);
       } else {
         setMyRanking(null);
       }
-
-      if (all.status === "rejected") {
-        setError(all.reason);
-      } else {
-        setError(null);
-      }
+      setError(all.status === "rejected" ? all.reason : null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,100 +67,88 @@ export function RankingScreen() {
     fetchRankings();
   }, [fetchRankings]);
 
-  const getInitials = (name: string) => {
-    const parts = name.split(" ");
-    return parts.length >= 2
-      ? (parts[0][0] + parts[1][0]).toUpperCase()
-      : name.slice(0, 2).toUpperCase();
-  };
-
   const ratio = (w: number, l: number) => {
     const total = w + l;
     return total === 0 ? "—" : `${Math.round((w / total) * 100)}%`;
   };
 
-  // ── Empty state ──
-  if (!loading && rankings.length === 0 && !myRanking) {
-    if (error) {
-      return (
-        <View style={styles.container}>
-          {renderTabs()}
-          {isNetworkError(error)
-            ? <NetworkError onRetry={() => { setLoading(true); fetchRankings(); }} />
-            : <ErrorState message="Impossible de charger le classement" onRetry={() => { setLoading(true); fetchRankings(); }} />}
-        </View>
-      );
-    }
+  // ── Sport pills ──
+  function renderSportPills() {
     return (
-      <View style={styles.container}>
-        {renderTabs()}
-        <EmptyState
-          icon="trophy-outline"
-          title="Pas encore de classement"
-          subtitle="Joue ton premier match compétition !"
-        />
-      </View>
-    );
-  }
-
-  // ── Tabs ──
-  function renderTabs() {
-    return (
-      <View style={styles.tabsContainer}>
-        {SPORTS.map((s) => (
-          <TouchableOpacity
-            key={s.key}
-            style={[styles.tab, sport === s.key && styles.tabActive]}
-            onPress={() => setSport(s.key)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={s.key === "tennis" ? "tennisball-outline" : "football-outline"}
-              size={16}
-              color={sport === s.key ? "#FFF" : Colors.TEXT_SECONDARY}
-              style={{ marginRight: 6 }}
-            />
-            <Text
-              style={[styles.tabText, sport === s.key && styles.tabTextActive]}
+      <View style={styles.pillRow}>
+        {SPORTS.map((s) => {
+          const active = sport === s.key;
+          return (
+            <TouchableOpacity
+              key={s.key}
+              style={[styles.pill, active && { backgroundColor: s.bg }]}
+              onPress={() => setSport(s.key)}
+              activeOpacity={0.7}
             >
-              {s.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Ionicons
+                name={s.icon}
+                size={16}
+                color={active ? "#FFF" : Colors.TEXT_SECONDARY}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.pillText, active && styles.pillTextActive]}>
+                {s.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     );
   }
 
-  // ── Row ──
-  function renderRow(item: Ranking, isMe: boolean) {
+  // ── My ranking highlight card (navy bg) ──
+  function renderMyRankCard() {
+    if (!myRanking) return null;
+    return (
+      <View style={styles.myCard}>
+        <Text style={styles.myCardLabel}>MON CLASSEMENT</Text>
+        <View style={styles.myCardRow}>
+          <Avatar name={myRanking.player_name} size="md" />
+          <View style={styles.myCardInfo}>
+            <Text style={styles.myCardName} numberOfLines={1}>
+              {myRanking.player_name}
+            </Text>
+            <Text style={styles.myCardStats}>
+              {myRanking.wins}V / {myRanking.losses}D · {ratio(myRanking.wins, myRanking.losses)}
+            </Text>
+          </View>
+          <View style={styles.myCardRight}>
+            <Text style={styles.myCardPosition}>#{myRanking.rank_position}</Text>
+            <Text style={styles.myCardPoints}>{myRanking.points} pts</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // ── Ranking row ──
+  function renderRow({ item, index }: { item: Ranking; index: number }) {
     const pos = item.rank_position;
-    const medal = MEDAL_COLORS[pos];
+    const isMe = item.player === myPlayerId;
+    const medal = MEDAL_EMOJI[pos];
+    const isEven = index % 2 === 0;
 
     return (
-      <View style={[styles.row, isMe && styles.rowHighlighted]}>
-        {/* Position */}
-        <View style={styles.positionContainer}>
+      <View style={[styles.row, isEven && styles.rowEven, isMe && styles.rowMe]}>
+        {/* Position / medal */}
+        <View style={styles.posCol}>
           {medal ? (
-            <View style={[styles.medalBadge, { backgroundColor: medal }]}>
-              <Text style={styles.medalText}>{pos}</Text>
-            </View>
+            <Text style={styles.medalEmoji}>{medal}</Text>
           ) : (
-            <Text style={styles.positionText}>{pos}</Text>
+            <Text style={styles.posText}>{pos}</Text>
           )}
         </View>
 
         {/* Avatar */}
-        <View
-          style={[
-            styles.avatar,
-            isMe && { borderColor: Colors.PRIMARY, borderWidth: 2 },
-          ]}
-        >
-          <Text style={styles.avatarText}>{getInitials(item.player_name)}</Text>
-        </View>
+        <Avatar name={item.player_name} size="sm" />
 
         {/* Info */}
-        <View style={styles.infoContainer}>
+        <View style={styles.infoCol}>
           <Text style={[styles.playerName, isMe && styles.playerNameMe]} numberOfLines={1}>
             {item.player_name}
             {isMe ? " (moi)" : ""}
@@ -183,37 +159,41 @@ export function RankingScreen() {
         </View>
 
         {/* Points */}
-        <View style={styles.pointsContainer}>
-          <Text style={[styles.pointsValue, isMe && styles.pointsValueMe]}>
-            {item.points}
-          </Text>
-          <Text style={styles.pointsLabel}>pts</Text>
+        <View style={styles.ptsCol}>
+          <Text style={[styles.ptsValue, isMe && styles.ptsValueMe]}>{item.points}</Text>
+          <Text style={styles.ptsLabel}>pts</Text>
         </View>
       </View>
     );
   }
 
-  // ── Header (my ranking) ──
-  function renderHeader() {
+  // ── Error / empty checks ──
+  if (!loading && rankings.length === 0 && !myRanking) {
+    if (error) {
+      return (
+        <View style={styles.container}>
+          {renderSportPills()}
+          {isNetworkError(error)
+            ? <NetworkError onRetry={() => { setLoading(true); fetchRankings(); }} />
+            : <ErrorState message="Impossible de charger le classement" onRetry={() => { setLoading(true); fetchRankings(); }} />}
+        </View>
+      );
+    }
     return (
-      <View>
-        {myRanking && (
-          <>
-            <View style={styles.myRankCard}>
-              <Text style={styles.myRankTitle}>Mon classement</Text>
-              {renderRow(myRanking, true)}
-            </View>
-            <View style={styles.separator} />
-          </>
-        )}
-        <Text style={styles.sectionTitle}>Top 50</Text>
+      <View style={styles.container}>
+        {renderSportPills()}
+        <EmptyState
+          icon="trophy-outline"
+          title="Pas encore de classement"
+          subtitle="Joue ton premier match compétition !"
+        />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {renderTabs()}
+      {renderSportPills()}
 
       {loading ? (
         <LoadingScreen message="Chargement du classement…" />
@@ -221,16 +201,19 @@ export function RankingScreen() {
         <FlatList
           data={rankings}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) =>
-            renderRow(item, item.player === myPlayerId)
+          renderItem={renderRow}
+          ListHeaderComponent={
+            <>
+              {renderMyRankCard()}
+              <Text style={styles.sectionTitle}>Top 50</Text>
+            </>
           }
-          ListHeaderComponent={renderHeader}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={Colors.PRIMARY}
-              colors={[Colors.PRIMARY]}
+              tintColor={Colors.BLUE}
+              colors={[Colors.BLUE]}
             />
           }
           contentContainerStyle={styles.listContent}
@@ -242,194 +225,88 @@ export function RankingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.BACKGROUND,
-  },
+  container: { flex: 1, backgroundColor: Colors.BACKGROUND },
 
-  // ── Tabs ──
-  tabsContainer: {
+  // ── Sport pills ──
+  pillRow: {
     flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 10,
+    gap: 12,
   },
-  tab: {
+  pill: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#F5F5F5",
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: Colors.CARD_BG,
   },
-  tabActive: {
-    backgroundColor: Colors.PRIMARY,
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.TEXT_SECONDARY,
-  },
-  tabTextActive: {
-    color: "#FFF",
-  },
-
-  // ── Loading ──
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  pillText: { fontSize: FONT_SIZES.body, fontWeight: "600", color: Colors.TEXT_SECONDARY },
+  pillTextActive: { color: "#FFFFFF", fontWeight: "700" },
 
   // ── List ──
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-  },
-
-  // ── My rank card ──
-  myRankCard: {
-    backgroundColor: "#F0FAF5",
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: "#D1F0E0",
-  },
-  myRankTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: Colors.PRIMARY,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-
-  // ── Separator ──
-  separator: {
-    height: 1,
-    backgroundColor: Colors.BORDER,
-    marginVertical: 16,
-  },
-
-  // ── Section title ──
+  listContent: { paddingHorizontal: 20, paddingBottom: 32 },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.h3,
     fontWeight: "700",
     color: Colors.TEXT,
+    marginTop: 20,
     marginBottom: 12,
   },
 
-  // ── Row ──
+  // ═══════════════════════════
+  // My ranking card (navy bg)
+  // ═══════════════════════════
+  myCard: {
+    backgroundColor: Colors.NAVY,
+    borderRadius: CARD_RADIUS,
+    padding: 18,
+    marginTop: 8,
+  },
+  myCardLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.6)",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  myCardRow: { flexDirection: "row", alignItems: "center" },
+  myCardInfo: { flex: 1, marginLeft: 14 },
+  myCardName: { fontSize: FONT_SIZES.h3, fontWeight: "700", color: "#FFFFFF" },
+  myCardStats: { fontSize: FONT_SIZES.caption, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+  myCardRight: { alignItems: "flex-end" },
+  myCardPosition: { fontSize: FONT_SIZES.h2, fontWeight: "800", color: "#FFFFFF" },
+  myCardPoints: { fontSize: FONT_SIZES.caption, color: "rgba(255,255,255,0.7)", marginTop: 2 },
+
+  // ═══════════════════════════
+  // Ranking rows
+  // ═══════════════════════════
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 12,
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  rowHighlighted: {
-    backgroundColor: "#E8F8EF",
-  },
+  rowEven: { backgroundColor: Colors.SURFACE },
+  rowMe: { backgroundColor: "#EFF6FF" },
 
-  // ── Position ──
-  positionContainer: {
-    width: 36,
-    alignItems: "center",
-  },
-  positionText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.TEXT_SECONDARY,
-  },
-  medalBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  medalText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#FFF",
-  },
+  posCol: { width: 36, alignItems: "center" },
+  medalEmoji: { fontSize: 20 },
+  posText: { fontSize: FONT_SIZES.body, fontWeight: "700", color: Colors.TEXT_SECONDARY },
 
-  // ── Avatar ──
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#E8E8E8",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: Colors.TEXT_SECONDARY,
-  },
+  infoCol: { flex: 1, marginLeft: 12, marginRight: 8 },
+  playerName: { fontSize: FONT_SIZES.body, fontWeight: "600", color: Colors.TEXT },
+  playerNameMe: { color: Colors.BLUE, fontWeight: "700" },
+  statsText: { fontSize: FONT_SIZES.caption, color: Colors.TEXT_SECONDARY, marginTop: 2 },
 
-  // ── Info ──
-  infoContainer: {
-    flex: 1,
-    marginRight: 8,
-  },
-  playerName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.TEXT,
-  },
-  playerNameMe: {
-    color: Colors.PRIMARY,
-    fontWeight: "700",
-  },
-  statsText: {
-    fontSize: 12,
-    color: Colors.TEXT_SECONDARY,
-    marginTop: 2,
-  },
-
-  // ── Points ──
-  pointsContainer: {
-    alignItems: "center",
-    minWidth: 50,
-  },
-  pointsValue: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: Colors.TEXT,
-  },
-  pointsValueMe: {
-    color: Colors.PRIMARY,
-  },
-  pointsLabel: {
-    fontSize: 11,
-    color: Colors.TEXT_SECONDARY,
-    fontWeight: "500",
-  },
-
-  // ── Empty ──
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: Colors.TEXT,
-    marginTop: 16,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.TEXT_SECONDARY,
-    textAlign: "center",
-    marginTop: 8,
-  },
+  ptsCol: { alignItems: "center", minWidth: 48 },
+  ptsValue: { fontSize: FONT_SIZES.h2, fontWeight: "800", color: Colors.TEXT },
+  ptsValueMe: { color: Colors.BLUE },
+  ptsLabel: { fontSize: 10, color: Colors.TEXT_SECONDARY, fontWeight: "500" },
 });

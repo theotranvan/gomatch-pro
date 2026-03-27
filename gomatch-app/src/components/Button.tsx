@@ -46,7 +46,7 @@ export function Button({
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === "outline" ? Colors.PRIMARY : "#FFFFFF"}
+          color={variant === "outline" ? Colors.NAVY : "#FFFFFF"}
         />
       ) : (
         <Text
@@ -66,7 +66,7 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 12,
+    borderRadius: 24,
     paddingVertical: 16,
     paddingHorizontal: 24,
     alignItems: "center",
@@ -74,8 +74,8 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   primary: {
-    backgroundColor: Colors.PRIMARY,
-    shadowColor: Colors.PRIMARY,
+    backgroundColor: Colors.BLUE,
+    shadowColor: Colors.BLUE,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   outline: {
     backgroundColor: "transparent",
     borderWidth: 1.5,
-    borderColor: Colors.PRIMARY,
+    borderColor: Colors.NAVY,
   },
   danger: {
     backgroundColor: Colors.ERROR,
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   outlineText: {
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
   },
   dangerText: {
     color: "#FFFFFF",

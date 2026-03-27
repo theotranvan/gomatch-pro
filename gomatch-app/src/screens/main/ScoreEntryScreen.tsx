@@ -14,6 +14,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-toast-message";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Colors } from "../../constants/colors";
+import { FONT_SIZES, CARD_RADIUS, BUTTON_RADIUS, SECTION_SPACING } from "../../constants/theme";
+import { Avatar } from "../../components/Avatar";
 import { scoringService } from "../../services/scoring";
 import type { HomeStackParamList } from "../../navigation/HomeStack";
 import type { SetScore } from "../../types";
@@ -142,7 +144,9 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
     return (
       <View style={styles.centeredContainer}>
         <View style={styles.successCard}>
-          <Ionicons name="checkmark-circle" size={64} color={Colors.SUCCESS} />
+          <View style={styles.successIconCircle}>
+            <Ionicons name="checkmark" size={40} color="#FFFFFF" />
+          </View>
           <Text style={styles.successTitle}>Score envoyé !</Text>
           <Text style={styles.successSub}>
             En attente de confirmation de votre adversaire
@@ -151,7 +155,9 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
           <View style={styles.summaryBox}>
             {sets.map((s, i) => (
               <View key={i} style={styles.summarySetRow}>
-                <Text style={styles.summarySetLabel}>Set {i + 1}</Text>
+                <Text style={styles.summarySetLabel}>
+                  {isPadel && i === 2 ? "STB" : `Set ${i + 1}`}
+                </Text>
                 <Text
                   style={[
                     styles.summarySetScore,
@@ -196,21 +202,19 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* Teams header */}
+        {/* Teams header — face to face */}
         <View style={styles.teamsHeader}>
           <View style={styles.teamCol}>
-            <View style={[styles.teamBadge, { backgroundColor: Colors.PRIMARY + "18" }]}>
-              <Text style={[styles.teamBadgeText, { color: Colors.PRIMARY }]}>A</Text>
-            </View>
+            <Avatar name={teamANames || "Équipe A"} size="lg" />
             <Text style={styles.teamName} numberOfLines={2}>
               {teamANames || "Équipe A"}
             </Text>
           </View>
-          <Text style={styles.vsText}>VS</Text>
+          <View style={styles.vsBadge}>
+            <Text style={styles.vsText}>VS</Text>
+          </View>
           <View style={styles.teamCol}>
-            <View style={[styles.teamBadge, { backgroundColor: Colors.ERROR + "18" }]}>
-              <Text style={[styles.teamBadgeText, { color: Colors.ERROR }]}>B</Text>
-            </View>
+            <Avatar name={teamBNames || "Équipe B"} size="lg" />
             <Text style={styles.teamName} numberOfLines={2}>
               {teamBNames || "Équipe B"}
             </Text>
@@ -218,58 +222,66 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
         </View>
 
         {/* Sets */}
-        {sets.map((set, idx) => (
-          <View key={idx} style={styles.setCard}>
-            <Text style={styles.setLabel}>
-              {isPadel && idx === 2 ? "Super tie-break" : `Set ${idx + 1}`}
-            </Text>
-            <View style={styles.setInputRow}>
-              {/* Team A score */}
-              <View style={styles.scoreControl}>
-                <TouchableOpacity
-                  style={styles.minusBtn}
-                  onPress={() => updateScore(idx, "team_a", -1)}
-                  activeOpacity={0.6}
-                >
-                  <Ionicons name="remove" size={20} color={Colors.TEXT} />
-                </TouchableOpacity>
-                <View style={styles.scoreDisplay}>
-                  <Text style={styles.scoreValue}>{set.team_a}</Text>
+        {sets.map((set, idx) => {
+          const isSuperTB = isPadel && idx === 2;
+          return (
+            <View key={idx} style={styles.setCard}>
+              {isSuperTB ? (
+                <View style={styles.superTBBanner}>
+                  <Ionicons name="flash" size={14} color="#FFFFFF" />
+                  <Text style={styles.superTBText}>Super Tie-Break</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.plusBtn}
-                  onPress={() => updateScore(idx, "team_a", 1)}
-                  activeOpacity={0.6}
-                >
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.scoreDash}>—</Text>
-
-              {/* Team B score */}
-              <View style={styles.scoreControl}>
-                <TouchableOpacity
-                  style={styles.minusBtn}
-                  onPress={() => updateScore(idx, "team_b", -1)}
-                  activeOpacity={0.6}
-                >
-                  <Ionicons name="remove" size={20} color={Colors.TEXT} />
-                </TouchableOpacity>
-                <View style={styles.scoreDisplay}>
-                  <Text style={styles.scoreValue}>{set.team_b}</Text>
+              ) : (
+                <Text style={styles.setLabel}>Set {idx + 1}</Text>
+              )}
+              <View style={styles.setInputRow}>
+                {/* Team A score */}
+                <View style={styles.scoreControl}>
+                  <TouchableOpacity
+                    style={styles.minusBtn}
+                    onPress={() => updateScore(idx, "team_a", -1)}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="remove" size={22} color={Colors.TEXT_SECONDARY} />
+                  </TouchableOpacity>
+                  <View style={[styles.scoreDisplay, isSuperTB && styles.scoreDisplaySTB]}>
+                    <Text style={styles.scoreValue}>{set.team_a}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.plusBtn}
+                    onPress={() => updateScore(idx, "team_a", 1)}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="add" size={22} color="#FFFFFF" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  style={styles.plusBtn}
-                  onPress={() => updateScore(idx, "team_b", 1)}
-                  activeOpacity={0.6}
-                >
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
+
+                <Text style={styles.scoreDash}>—</Text>
+
+                {/* Team B score */}
+                <View style={styles.scoreControl}>
+                  <TouchableOpacity
+                    style={styles.minusBtn}
+                    onPress={() => updateScore(idx, "team_b", -1)}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="remove" size={22} color={Colors.TEXT_SECONDARY} />
+                  </TouchableOpacity>
+                  <View style={[styles.scoreDisplay, isSuperTB && styles.scoreDisplaySTB]}>
+                    <Text style={styles.scoreValue}>{set.team_b}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.plusBtn}
+                    onPress={() => updateScore(idx, "team_b", 1)}
+                    activeOpacity={0.6}
+                  >
+                    <Ionicons name="add" size={22} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
 
         {/* Add / Remove set buttons */}
         <View style={styles.setActions}>
@@ -291,8 +303,8 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
               onPress={addSet}
               activeOpacity={0.7}
             >
-              <Ionicons name="add-circle-outline" size={20} color={Colors.PRIMARY} />
-              <Text style={[styles.setActionText, { color: Colors.PRIMARY }]}>
+              <Ionicons name="add-circle-outline" size={20} color={Colors.BLUE} />
+              <Text style={[styles.setActionText, { color: Colors.BLUE }]}>
                 Ajouter un set
               </Text>
             </TouchableOpacity>
@@ -312,7 +324,7 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
           <Ionicons
             name={allZeros ? "information-circle-outline" : "trophy-outline"}
             size={22}
-            color={allZeros ? Colors.TEXT_SECONDARY : Colors.PRIMARY}
+            color={allZeros ? Colors.TEXT_SECONDARY : Colors.BLUE}
           />
           <Text
             style={[
@@ -348,29 +360,26 @@ export function ScoreEntryScreen({ route, navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-  },
-  content: {
-    padding: 20,
-  },
+  container: { flex: 1, backgroundColor: Colors.SURFACE },
+  content: { padding: 20 },
   centeredContainer: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: Colors.SURFACE,
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
   },
 
-  // ── Teams header ──
+  // ════════════════════════════
+  // Teams header (face to face)
+  // ════════════════════════════
   teamsHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.BACKGROUND,
-    borderRadius: 18,
-    padding: 20,
+    borderRadius: CARD_RADIUS,
+    padding: SECTION_SPACING,
     marginBottom: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -378,39 +387,35 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  teamCol: {
-    flex: 1,
-    alignItems: "center",
-  },
-  teamBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  teamBadgeText: {
-    fontSize: 18,
-    fontWeight: "800",
-  },
+  teamCol: { flex: 1, alignItems: "center" },
   teamName: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.caption,
     fontWeight: "600",
     color: Colors.TEXT,
     textAlign: "center",
+    marginTop: 8,
+  },
+  vsBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.CARD_BG,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 12,
   },
   vsText: {
-    fontSize: 18,
+    fontSize: FONT_SIZES.body,
     fontWeight: "800",
     color: Colors.TEXT_SECONDARY,
-    marginHorizontal: 16,
   },
 
-  // ── Set card ──
+  // ════════════════════════════
+  // Set card
+  // ════════════════════════════
   setCard: {
     backgroundColor: Colors.BACKGROUND,
-    borderRadius: 16,
+    borderRadius: CARD_RADIUS,
     padding: 16,
     marginBottom: 12,
     shadowColor: "#000",
@@ -420,11 +425,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   setLabel: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.body,
     fontWeight: "700",
     color: Colors.TEXT_SECONDARY,
     textAlign: "center",
-    marginBottom: 12,
+    marginBottom: 14,
   },
   setInputRow: {
     flexDirection: "row",
@@ -432,40 +437,64 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // ── Score control ──
+  // ── Super Tie-Break orange banner ──
+  superTBBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.ORANGE,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    alignSelf: "center",
+    marginBottom: 14,
+    gap: 6,
+  },
+  superTBText: {
+    fontSize: FONT_SIZES.caption,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+
+  // ── Score controls ──
   scoreControl: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
   },
   minusBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#F0F0F0",
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.CARD_BG,
     alignItems: "center",
     justifyContent: "center",
   },
   plusBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: Colors.PRIMARY,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.BLUE,
     alignItems: "center",
     justifyContent: "center",
   },
   scoreDisplay: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: "#F5F5F5",
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: Colors.CARD_BG,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: Colors.BORDER,
   },
+  scoreDisplaySTB: {
+    borderColor: Colors.ORANGE,
+  },
   scoreValue: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "800",
     color: Colors.TEXT,
   },
@@ -473,7 +502,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     color: Colors.TEXT_SECONDARY,
-    marginHorizontal: 16,
+    marginHorizontal: 14,
   },
 
   // ── Set actions ──
@@ -489,10 +518,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 8,
   },
-  setActionText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  setActionText: { fontSize: FONT_SIZES.body, fontWeight: "600" },
 
   // ── Validation error ──
   validationError: {
@@ -505,7 +531,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   validationErrorText: {
-    fontSize: 13,
+    fontSize: FONT_SIZES.caption,
     color: Colors.ERROR,
     flex: 1,
   },
@@ -516,7 +542,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     backgroundColor: Colors.BACKGROUND,
-    borderRadius: 14,
+    borderRadius: CARD_RADIUS,
     padding: 16,
     marginTop: 8,
     marginBottom: 20,
@@ -524,25 +550,24 @@ const styles = StyleSheet.create({
     borderColor: Colors.BORDER,
   },
   summaryText: {
-    fontSize: 15,
+    fontSize: FONT_SIZES.body,
     color: Colors.TEXT_SECONDARY,
     flex: 1,
   },
-  summaryTextBold: {
-    color: Colors.TEXT,
-    fontWeight: "600",
-  },
+  summaryTextBold: { color: Colors.TEXT, fontWeight: "600" },
 
-  // ── Submit ──
+  // ════════════════════════════
+  // Submit button (blue rounded)
+  // ════════════════════════════
   submitBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: Colors.PRIMARY,
-    borderRadius: 14,
+    backgroundColor: Colors.BLUE,
+    borderRadius: BUTTON_RADIUS,
     paddingVertical: 16,
-    shadowColor: Colors.PRIMARY,
+    shadowColor: Colors.BLUE,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -554,15 +579,17 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   submitBtnText: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.h3,
     fontWeight: "700",
     color: "#FFFFFF",
   },
 
-  // ── Success state ──
+  // ════════════════════════════
+  // Success state
+  // ════════════════════════════
   successCard: {
     backgroundColor: Colors.BACKGROUND,
-    borderRadius: 24,
+    borderRadius: CARD_RADIUS + 8,
     padding: 32,
     alignItems: "center",
     width: "100%",
@@ -572,25 +599,33 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 5,
   },
+  successIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.SUCCESS,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   successTitle: {
-    fontSize: 22,
+    fontSize: FONT_SIZES.h1,
     fontWeight: "800",
     color: Colors.TEXT,
     marginTop: 16,
     marginBottom: 8,
   },
   successSub: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.body,
     color: Colors.TEXT_SECONDARY,
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: SECTION_SPACING,
   },
   summaryBox: {
     width: "100%",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 14,
+    backgroundColor: Colors.SURFACE,
+    borderRadius: CARD_RADIUS,
     padding: 16,
-    marginBottom: 24,
+    marginBottom: SECTION_SPACING,
   },
   summarySetRow: {
     flexDirection: "row",
@@ -599,34 +634,32 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   summarySetLabel: {
-    fontSize: 14,
+    fontSize: FONT_SIZES.body,
     fontWeight: "600",
     color: Colors.TEXT_SECONDARY,
     width: 60,
   },
   summarySetScore: {
-    fontSize: 22,
+    fontSize: FONT_SIZES.h1,
     fontWeight: "800",
     color: Colors.TEXT,
     width: 40,
     textAlign: "center",
   },
-  summaryWin: {
-    color: Colors.PRIMARY,
-  },
+  summaryWin: { color: Colors.BLUE },
   summaryDash: {
-    fontSize: 18,
+    fontSize: FONT_SIZES.h3,
     color: Colors.TEXT_SECONDARY,
     marginHorizontal: 8,
   },
   backBtn: {
-    backgroundColor: Colors.PRIMARY,
-    borderRadius: 14,
+    backgroundColor: Colors.BLUE,
+    borderRadius: BUTTON_RADIUS,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
   backBtnText: {
-    fontSize: 16,
+    fontSize: FONT_SIZES.h3,
     fontWeight: "700",
     color: "#FFFFFF",
   },

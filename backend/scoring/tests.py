@@ -1,7 +1,8 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -473,3 +474,176 @@ class DoublesScoreTests(TestCase):
             self.assertEqual(r.points, 985)
             self.assertEqual(r.wins, 0)
             self.assertEqual(r.losses, 1)
+
+
+# ---------------------------------------------------------------------------
+# Auto-expire, admin resolve, resubmit tests
+# ---------------------------------------------------------------------------
+
+
+class AutoExpire24hTests(ScoreTestMixin, TestCase):
+    """Tests for auto_expire_scores management command."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.create_match_with_participants()
+        self.score = Score.objects.create(
+            match=self.match,
+            submitted_by=self.user1,
+            sets=[{"team_a": 6, "team_b": 4}, {"team_a": 6, "team_b": 3}],
+            winner=self.user1.profile,
+            status=ScoreStatus.PENDING,
+        )
+
+    def test_auto_expire_24h(self):
+        """Pending score older than 24h should be expired by command."""
+        # Manually set created_at to 25 hours ago
+        Score.objects.filter(pk=self.score.pk).update(
+            created_at=timezone.now() - timedelta(hours=25),
+        )
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command("auto_expire_scores", stdout=out)
+        self.score.refresh_from_db()
+        self.assertEqual(self.score.status, ScoreStatus.EXPIRED)
+        self.assertIn("1 score(s) expired", out.getvalue())
+
+    def test_auto_expire_not_yet(self):
+        """Pending score less than 24h old should NOT be expired."""
+        from django.core.management import call_command
+        from io import StringIO
+        out = StringIO()
+        call_command("auto_expire_scores", stdout=out)
+        self.score.refresh_from_db()
+        self.assertEqual(self.score.status, ScoreStatus.PENDING)
+        self.assertIn("0 score(s) expired", out.getvalue())
+
+
+class AdminResolveConfirmTests(ScoreTestMixin, TestCase):
+    """Tests for POST /api/scores/:id/admin-resolve/ with action=confirm."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.create_match_with_participants()
+        self.admin = User.objects.create_superuser(
+            email="admin@test.com",
+            password="adminpass123",
+        )
+        self.score = Score.objects.create(
+            match=self.match,
+            submitted_by=self.user1,
+            sets=[{"team_a": 6, "team_b": 4}, {"team_a": 6, "team_b": 3}],
+            winner=self.user1.profile,
+            status=ScoreStatus.DISPUTED,
+        )
+        self.url = f"/api/scores/{self.score.id}/admin-resolve/"
+
+    def test_admin_resolve_confirm(self):
+        """Admin confirm should set CONFIRMED and update ranking."""
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            self.url,
+            {"action": "confirm", "admin_note": "Score correct"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "confirmed")
+        self.assertEqual(response.data["admin_note"], "Score correct")
+        # Ranking updated (competitive match)
+        winner_ranking = Ranking.objects.get(
+            player=self.user1.profile, sport=SportType.TENNIS,
+        )
+        self.assertEqual(winner_ranking.points, 1025)
+
+    def test_admin_resolve_non_admin_forbidden(self):
+        """Non-admin user should get 403."""
+        self.client.force_authenticate(user=self.user1)
+        response = self.client.post(
+            self.url,
+            {"action": "confirm"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class AdminResolveRejectTests(ScoreTestMixin, TestCase):
+    """Tests for POST /api/scores/:id/admin-resolve/ with action=reject."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.create_match_with_participants()
+        self.admin = User.objects.create_superuser(
+            email="admin@test.com",
+            password="adminpass123",
+        )
+        self.score = Score.objects.create(
+            match=self.match,
+            submitted_by=self.user1,
+            sets=[{"team_a": 6, "team_b": 4}, {"team_a": 6, "team_b": 3}],
+            winner=self.user1.profile,
+            status=ScoreStatus.DISPUTED,
+        )
+        self.url = f"/api/scores/{self.score.id}/admin-resolve/"
+
+    def test_admin_resolve_reject(self):
+        """Admin reject should set REJECTED."""
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.post(
+            self.url,
+            {"action": "reject", "admin_note": "Score incorrect"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "rejected")
+        # No ranking update
+        self.assertFalse(
+            Ranking.objects.filter(player=self.user1.profile).exists()
+        )
+
+
+class ResubmitAfterExpireTests(ScoreTestMixin, TestCase):
+    """Tests for re-submitting a score after EXPIRED or REJECTED."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.create_match_with_participants()
+        self.url = f"/api/matches/{self.match.id}/score/"
+        self.sets_data = [
+            {"team_a": 6, "team_b": 4},
+            {"team_a": 6, "team_b": 3},
+        ]
+
+    def test_resubmit_after_expire(self):
+        """Should be able to submit a new score after the old one expired."""
+        Score.objects.create(
+            match=self.match,
+            submitted_by=self.user1,
+            sets=[{"team_a": 6, "team_b": 4}, {"team_a": 6, "team_b": 3}],
+            winner=self.user1.profile,
+            status=ScoreStatus.EXPIRED,
+        )
+        self.client.force_authenticate(user=self.user1)
+        response = self.client.post(
+            self.url, {"sets": self.sets_data}, format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["status"], "pending")
+        # Only one score should exist now
+        self.assertEqual(Score.objects.filter(match=self.match).count(), 1)
+
+    def test_resubmit_after_reject(self):
+        """Should be able to submit a new score after admin rejection."""
+        Score.objects.create(
+            match=self.match,
+            submitted_by=self.user1,
+            sets=[{"team_a": 6, "team_b": 4}, {"team_a": 6, "team_b": 3}],
+            winner=self.user1.profile,
+            status=ScoreStatus.REJECTED,
+        )
+        self.client.force_authenticate(user=self.user2)
+        response = self.client.post(
+            self.url, {"sets": self.sets_data}, format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Score.objects.filter(match=self.match).count(), 1)

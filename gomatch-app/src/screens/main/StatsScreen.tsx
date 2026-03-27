@@ -50,7 +50,7 @@ const chartConfig = {
   decimalCount: 0,
   color: (opacity = 1) => `rgba(27, 107, 74, ${opacity})`,
   labelColor: () => Colors.TEXT_SECONDARY,
-  propsForDots: { r: "5", strokeWidth: "2", stroke: Colors.PRIMARY },
+  propsForDots: { r: "5", strokeWidth: "2", stroke: Colors.NAVY },
   propsForBackgroundLines: { stroke: Colors.BORDER },
 };
 
@@ -119,8 +119,8 @@ export function StatsScreen() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          tintColor={Colors.PRIMARY}
-          colors={[Colors.PRIMARY]}
+          tintColor={Colors.NAVY}
+          colors={[Colors.NAVY]}
         />
       }
     >
@@ -158,7 +158,7 @@ export function StatsScreen() {
           icon="tennisball-outline"
           value={stats.matches_played}
           label="Matchs"
-          color={Colors.PRIMARY}
+          color={Colors.NAVY}
         />
       </View>
 
@@ -250,7 +250,7 @@ export function StatsScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Lieu favori</Text>
           <View style={styles.venueRow}>
-            <Ionicons name="location" size={22} color={Colors.PRIMARY} />
+            <Ionicons name="location" size={22} color={Colors.NAVY} />
             <View style={{ marginLeft: 10, flex: 1 }}>
               <Text style={styles.venueName}>{stats.favorite_venue.name}</Text>
               <Text style={styles.venueCount}>
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   toggleBtnActive: {
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
   },
   toggleText: {
     fontSize: 15,
@@ -434,13 +434,13 @@ const styles = StyleSheet.create({
   },
   winRateBarFill: {
     height: "100%",
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: Colors.NAVY,
     borderRadius: 5,
   },
   winRateText: {
     fontSize: 18,
     fontWeight: "700",
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     width: 52,
     textAlign: "right",
   },
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   bigNumber: {
     fontSize: 36,
     fontWeight: "700",
-    color: Colors.PRIMARY,
+    color: Colors.NAVY,
     textAlign: "center",
   },
   pointsSubtitle: {
