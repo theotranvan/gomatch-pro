@@ -186,6 +186,22 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Europe/Zurich"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_TASK_ALWAYS_EAGER = os.environ.get("CELERY_TASK_ALWAYS_EAGER", "True").lower() in ("true", "1")
+
+CELERY_BEAT_SCHEDULE = {
+    "auto-expire-scores": {
+        "task": "core.tasks.auto_expire_scores_task",
+        "schedule": 3600,  # every hour
+    },
+    "release-expired-holds": {
+        "task": "core.tasks.release_expired_holds_task",
+        "schedule": 300,  # every 5 minutes
+    },
+    "send-match-reminders": {
+        "task": "core.tasks.send_match_reminders_task",
+        "schedule": 1800,  # every 30 minutes
+    },
+}
 
 
 # --------------------------------------------------------------------------

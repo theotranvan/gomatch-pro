@@ -3,7 +3,7 @@ from django.dispatch import receiver
 
 from chat.models import ChatMessage, ChatRoom
 from core.enums import ChatRoomType, MessageType, ParticipantStatus
-from core.notifications import NotificationService
+from core.tasks import send_push_notification_task
 from matches.models import Match, MatchParticipant
 
 
@@ -62,11 +62,11 @@ def add_participant_to_chatroom(sender, instance, created, **kwargs):
     # Notify match creator that someone joined
     if match.created_by_id != user.pk:
         sport_label = match.get_sport_display()
-        NotificationService.send_push(
-            user_ids=[match.created_by_id],
-            title="Nouveau joueur !",
-            body=f"{first_name} a rejoint votre match de {sport_label}",
-            data={"type": "match", "match_id": str(match.pk)},
+        send_push_notification_task.delay(
+            [str(match.created_by_id)],
+            "Nouveau joueur !",
+            f"{first_name} a rejoint votre match de {sport_label}",
+            {"type": "match", "match_id": str(match.pk)},
         )
 
 
@@ -90,9 +90,9 @@ def notify_new_chat_message(sender, instance, created, **kwargs):
         room.participants.exclude(pk=instance.sender_id).values_list("pk", flat=True)
     )
     if recipient_ids:
-        NotificationService.send_push(
-            user_ids=recipient_ids,
-            title="Nouveau message",
-            body=f"Nouveau message de {sender_name} dans le chat du match",
-            data={"type": "chat", "room_id": str(room.pk)},
+        send_push_notification_task.delay(
+            [str(uid) for uid in recipient_ids],
+            "Nouveau message",
+            f"Nouveau message de {sender_name} dans le chat du match",
+            {"type": "chat", "room_id": str(room.pk)},
         )

@@ -38,6 +38,8 @@ services:
         value: "False"
       - key: DJANGO_SETTINGS_MODULE
         value: gomatch_api.settings
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: "False"
       - key: RENDER
         value: "true"
       - key: PYTHON_VERSION
@@ -67,6 +69,8 @@ services:
         value: "False"
       - key: DJANGO_SETTINGS_MODULE
         value: gomatch_api.settings
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: "False"
       - key: RENDER
         value: "true"
       - key: PYTHON_VERSION
@@ -96,6 +100,8 @@ services:
         value: "False"
       - key: DJANGO_SETTINGS_MODULE
         value: gomatch_api.settings
+      - key: CELERY_TASK_ALWAYS_EAGER
+        value: "False"
       - key: RENDER
         value: "true"
       - key: PYTHON_VERSION

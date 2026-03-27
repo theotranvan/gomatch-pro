@@ -9,7 +9,7 @@ from core.enums import (
     SportType,
     TeamSide,
 )
-from core.notifications import NotificationService
+from core.tasks import send_push_notification_task, update_rankings_task
 from matches.models import MatchParticipant
 from scoring.models import Ranking, Score
 
@@ -181,11 +181,11 @@ class ScoreService:
             ).exclude(player__user=user).values_list("player__user_id", flat=True)
         )
         if other_ids:
-            NotificationService.send_push(
-                user_ids=other_ids,
-                title="Score soumis",
-                body=f"{submitter_name} a soumis le score. Confirmez-le !",
-                data={"type": "score", "match_id": str(match.pk)},
+            send_push_notification_task.delay(
+                [str(uid) for uid in other_ids],
+                "Score soumis",
+                f"{submitter_name} a soumis le score. Confirmez-le !",
+                {"type": "score", "match_id": str(match.pk)},
             )
 
         return score
@@ -228,9 +228,9 @@ class ScoreService:
             "status", "confirmed_by", "confirmed_at",
         ])
 
-        # 4. Update rankings for competitive matches
+        # 4. Update rankings for competitive matches (async)
         if match.play_mode == PlayMode.COMPETITIVE:
-            RankingService.update_rankings(score)
+            update_rankings_task.delay(str(score.id))
 
         # Notify all participants that the score is confirmed
         participant_ids = list(
@@ -239,11 +239,11 @@ class ScoreService:
             ).values_list("player__user_id", flat=True)
         )
         if participant_ids:
-            NotificationService.send_push(
-                user_ids=participant_ids,
-                title="Score validé !",
-                body="Score validé ! Votre classement a été mis à jour.",
-                data={"type": "score", "match_id": str(match.pk)},
+            send_push_notification_task.delay(
+                [str(uid) for uid in participant_ids],
+                "Score validé !",
+                "Score validé ! Votre classement a été mis à jour.",
+                {"type": "score", "match_id": str(match.pk)},
             )
 
         return score
@@ -309,9 +309,9 @@ class ScoreService:
                 "status", "admin_note", "resolved_by",
                 "confirmed_by", "confirmed_at",
             ])
-            # Update rankings for competitive matches
+            # Update rankings for competitive matches (async)
             if score.match.play_mode == PlayMode.COMPETITIVE:
-                RankingService.update_rankings(score)
+                update_rankings_task.delay(str(score.id))
         else:
             score.status = ScoreStatus.REJECTED
             score.save(update_fields=["status", "admin_note", "resolved_by"])
@@ -324,18 +324,18 @@ class ScoreService:
         )
         if participant_ids:
             if action == "confirm":
-                NotificationService.send_push(
-                    user_ids=participant_ids,
-                    title="Litige résolu",
-                    body="L'admin a validé le score. Classement mis à jour.",
-                    data={"type": "score", "match_id": str(score.match.pk)},
+                send_push_notification_task.delay(
+                    [str(uid) for uid in participant_ids],
+                    "Litige résolu",
+                    "L'admin a validé le score. Classement mis à jour.",
+                    {"type": "score", "match_id": str(score.match.pk)},
                 )
             else:
-                NotificationService.send_push(
-                    user_ids=participant_ids,
-                    title="Litige résolu",
-                    body="L'admin a rejeté le score. Vous pouvez soumettre un nouveau score.",
-                    data={"type": "score", "match_id": str(score.match.pk)},
+                send_push_notification_task.delay(
+                    [str(uid) for uid in participant_ids],
+                    "Litige résolu",
+                    "L'admin a rejeté le score. Vous pouvez soumettre un nouveau score.",
+                    {"type": "score", "match_id": str(score.match.pk)},
                 )
 
         return score
