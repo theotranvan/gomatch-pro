@@ -258,6 +258,7 @@ class PlayerListView(generics.ListAPIView):
     filterset_class = PlayerFilter
 
     def get_queryset(self):
+        # Optimized: 1 query with join (profile + user) instead of N+1
         return PlayerProfile.objects.select_related("user").order_by(
             "last_name", "first_name"
         )

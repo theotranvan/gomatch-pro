@@ -16,7 +16,7 @@ class EventRegistrationSerializer(serializers.ModelSerializer):
 
 
 class EventListSerializer(serializers.ModelSerializer):
-    registrations_count = serializers.IntegerField(read_only=True)
+    registrations_count = serializers.IntegerField(source="_registrations_count_db", read_only=True)
     spots_left = serializers.IntegerField(read_only=True)
 
     class Meta:

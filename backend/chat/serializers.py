@@ -68,6 +68,9 @@ class ChatRoomListSerializer(serializers.ModelSerializer):
         return None
 
     def get_unread_count(self, obj):
+        # Optimized: uses annotated _unread_count from queryset instead of per-room query
+        if hasattr(obj, '_unread_count'):
+            return obj._unread_count
         request = self.context.get("request")
         if not request:
             return 0
@@ -76,8 +79,9 @@ class ChatRoomListSerializer(serializers.ModelSerializer):
         ).count()
 
     def get_participants_names(self, obj):
+        # Optimized: uses prefetched participants (no extra queries)
         names = []
-        for user in obj.participants.select_related("profile").all():
+        for user in obj.participants.all():
             profile = getattr(user, "profile", None)
             if profile and profile.first_name:
                 names.append(

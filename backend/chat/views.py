@@ -1,4 +1,4 @@
-from django.db.models import Max, Q, Subquery, OuterRef, Value
+from django.db.models import Count, IntegerField, Max, Prefetch, Q, Subquery, OuterRef, Value
 from django.db.models.functions import Coalesce
 from rest_framework import serializers as drf_serializers, status
 from rest_framework.generics import ListAPIView
@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, inline_serializer
 
+from accounts.models import User
 from chat.models import ChatMessage, ChatRoom
 from chat.serializers import (
     ChatMessageSerializer,
@@ -31,10 +32,20 @@ class ChatRoomListView(ListAPIView):
     serializer_class = ChatRoomListSerializer
 
     def get_queryset(self):
+        # Optimized: 3 queries (rooms + participants + profiles) + annotations instead of N+1
         user = self.request.user
         last_msg = ChatMessage.objects.filter(
             room=OuterRef("pk"),
         ).order_by("-created_at").values("created_at")[:1]
+
+        unread_qs = (
+            ChatMessage.objects.filter(room=OuterRef("pk"), is_read=False)
+            .exclude(sender=user)
+            .order_by()
+            .values("room")
+            .annotate(c=Count("id"))
+            .values("c")
+        )
 
         return (
             ChatRoom.objects.filter(participants=user, is_active=True)
@@ -43,6 +54,13 @@ class ChatRoomListView(ListAPIView):
                     Subquery(last_msg),
                     "created_at",
                 ),
+                _unread_count=Coalesce(
+                    Subquery(unread_qs[:1], output_field=IntegerField()),
+                    Value(0),
+                ),
+            )
+            .prefetch_related(
+                Prefetch("participants", queryset=User.objects.select_related("profile")),
             )
             .order_by("-last_message_at")
         )
@@ -79,7 +97,7 @@ class ChatMessageListCreateView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        messages = room.messages.select_related("sender").order_by("-created_at")
+        messages = room.messages.select_related("sender__profile").order_by("-created_at")
         paginator = ChatMessagePagination()
         page = paginator.paginate_queryset(messages, request)
         serializer = ChatMessageSerializer(page, many=True)

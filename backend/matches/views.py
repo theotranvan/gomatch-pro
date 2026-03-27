@@ -63,8 +63,11 @@ class MatchListView(generics.ListAPIView):
     filterset_class = MatchFilter
 
     def get_queryset(self):
+        # Optimized: 3 queries (matches + participants + profiles) instead of N+1
         return Match.objects.select_related(
             "created_by__profile"
+        ).prefetch_related(
+            "participants__player"
         ).order_by("-scheduled_date", "-scheduled_time")
 
 
@@ -80,7 +83,10 @@ class MatchDetailView(generics.RetrieveAPIView):
     lookup_field = "pk"
 
     def get_queryset(self):
-        return Match.objects.prefetch_related("participants__player__user")
+        # Optimized: 4 queries (match + creator + participants + score) instead of N+1
+        return Match.objects.select_related(
+            "created_by__profile"
+        ).prefetch_related("participants__player__user", "score")
 
 
 class MatchJoinView(APIView):
@@ -151,8 +157,13 @@ class MyMatchesView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        # Optimized: 3 queries (matches + participants + profiles) instead of N+1
         return Match.objects.filter(
             participants__player=self.request.user.profile
+        ).select_related(
+            "created_by__profile"
+        ).prefetch_related(
+            "participants__player"
         ).order_by("-scheduled_date", "-scheduled_time")
 
 
@@ -256,12 +267,14 @@ class OpenMatchListView(generics.ListAPIView):
     def get_queryset(self):
         from django.utils import timezone
 
+        # Optimized: 3 queries (open_matches + participants + profiles) instead of N+1
         return (
             OpenMatch.objects.filter(
                 match__status=MatchStatus.OPEN,
                 expires_at__gt=timezone.now(),
             )
             .select_related("match__created_by__profile")
+            .prefetch_related("match__participants__player")
             .order_by("-match__scheduled_date")
         )
 

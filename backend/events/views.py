@@ -1,9 +1,11 @@
+from django.db.models import Count, Q
 from django_filters import rest_framework as filters
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from core.enums import RegistrationStatus
 from events.models import Event, EventRegistration
 from events.serializers import (
     EventCreateSerializer,
@@ -27,7 +29,13 @@ class EventFilter(filters.FilterSet):
 
 class EventListCreateView(generics.ListCreateAPIView):
     """GET /api/events/ — list events; POST — create (admin only)."""
-    queryset = Event.objects.all()
+    # Optimized: annotate registrations_count in SQL instead of N+1 property calls
+    queryset = Event.objects.annotate(
+        _registrations_count_db=Count(
+            "registrations",
+            filter=~Q(registrations__status=RegistrationStatus.CANCELLED),
+        ),
+    )
     filterset_class = EventFilter
 
     def get_serializer_class(self):

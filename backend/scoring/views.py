@@ -141,6 +141,7 @@ class RankingListView(generics.ListAPIView):
     filterset_class = RankingFilter
 
     def get_queryset(self):
+        # Optimized: 1 query with joins (player + user) instead of N+1
         return Ranking.objects.select_related(
             "player", "player__user"
         ).annotate(

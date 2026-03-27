@@ -48,9 +48,10 @@ class MyBookingsView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        # Optimized: 1 query with joins (slot → court → venue) instead of N+1
         return Booking.objects.filter(
             booked_by=self.request.user,
-        ).select_related("time_slot", "match")
+        ).select_related("time_slot__court__venue", "match")
 
 
 @extend_schema(tags=["Bookings"])
@@ -65,9 +66,10 @@ class BookingDetailView(generics.RetrieveAPIView):
     lookup_field = "pk"
 
     def get_queryset(self):
+        # Optimized: 1 query with joins (slot → court → venue) instead of N+1
         return Booking.objects.filter(
             booked_by=self.request.user,
-        ).select_related("time_slot", "match")
+        ).select_related("time_slot__court__venue", "match")
 
 
 @extend_schema(tags=["Bookings"])

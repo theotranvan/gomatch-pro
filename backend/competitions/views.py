@@ -17,7 +17,8 @@ from venues.models import Venue
 class TournamentListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TournamentListSerializer
-    queryset = Tournament.objects.all().order_by("-created_at")
+    # Optimized: 2 queries (tournaments + participants) instead of N+1
+    queryset = Tournament.objects.prefetch_related("participants").order_by("-created_at")
 
 
 class TournamentCreateView(APIView):
@@ -54,7 +55,13 @@ class TournamentCreateView(APIView):
 class TournamentDetailView(generics.RetrieveAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TournamentDetailSerializer
-    queryset = Tournament.objects.all()
+    # Optimized: prefetch rounds → matches → participants instead of N+1
+    queryset = Tournament.objects.prefetch_related(
+        "participants__player",
+        "rounds__matches__participant_a__player",
+        "rounds__matches__participant_b__player",
+        "rounds__matches__winner__player",
+    )
     lookup_field = "pk"
 
 
