@@ -197,6 +197,12 @@ class PlayerProfile(models.Model):
         db_table = "player_profiles"
         verbose_name = "player profile"
         verbose_name_plural = "player profiles"
+        indexes = [
+            models.Index(fields=["city"], name="idx_profile_city"),
+            models.Index(fields=["level_tennis"], name="idx_profile_tennis"),
+            models.Index(fields=["level_padel"], name="idx_profile_padel"),
+            models.Index(fields=["username"], name="idx_profile_username"),
+        ]
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.user.email})"

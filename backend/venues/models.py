@@ -189,6 +189,9 @@ class TimeSlot(models.Model):
         verbose_name_plural = "time slots"
         unique_together = ("court", "date", "start_time")
         ordering = ["date", "start_time"]
+        indexes = [
+            models.Index(fields=["status", "date"], name="idx_slot_status_date"),
+        ]
 
     def __str__(self):
         return (

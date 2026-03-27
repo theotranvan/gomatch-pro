@@ -144,6 +144,9 @@ class Ranking(models.Model):
         verbose_name_plural = "rankings"
         unique_together = ("player", "sport")
         ordering = ["-points"]
+        indexes = [
+            models.Index(fields=["sport", "-points"], name="idx_ranking_sport_pts"),
+        ]
 
     def __str__(self):
         return (

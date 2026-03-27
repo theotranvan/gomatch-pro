@@ -96,6 +96,10 @@ class ChatMessage(models.Model):
         verbose_name = "chat message"
         verbose_name_plural = "chat messages"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["room", "-created_at"], name="idx_msg_room_date"),
+            models.Index(fields=["is_read"], name="idx_msg_read"),
+        ]
 
     def __str__(self):
         return f"{self.sender} in {self.room}: {self.content[:50]}"

@@ -52,6 +52,9 @@ class Event(models.Model):
         ordering = ["date", "start_time"]
         verbose_name = "event"
         verbose_name_plural = "events"
+        indexes = [
+            models.Index(fields=["status", "date"], name="idx_event_status_date"),
+        ]
 
     def __str__(self):
         return self.name
