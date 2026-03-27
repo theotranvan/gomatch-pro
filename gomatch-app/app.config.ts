@@ -51,10 +51,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         enableGooglePay: false,
       },
     ],
+    "@sentry/react-native/expo",
     "expo-notifications",
   ],
   extra: {
     apiUrl: process.env.API_URL || "http://localhost:8000/api",
     stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || "",
+    sentryDsn: process.env.SENTRY_DSN || "",
   },
 });

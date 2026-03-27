@@ -7,6 +7,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
 from django.db import connection
+from django.core.cache import cache
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -18,14 +19,39 @@ from scoring.urls import ranking_urlpatterns, stats_urlpatterns
 
 
 def health_check(request):
+    components = {}
+
+    # Database
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-        db_ok = True
-    except Exception:
-        db_ok = False
-    status_code = 200 if db_ok else 503
-    return JsonResponse({"status": "ok" if db_ok else "error", "db": db_ok}, status=status_code)
+        components["db"] = "ok"
+    except Exception as e:
+        components["db"] = f"error: {e.__class__.__name__}"
+
+    # Redis / Cache
+    try:
+        cache.set("_health", "1", timeout=5)
+        val = cache.get("_health")
+        components["cache"] = "ok" if val == "1" else "error: read-back failed"
+    except Exception as e:
+        components["cache"] = f"error: {e.__class__.__name__}"
+
+    # Celery
+    try:
+        from gomatch_api.celery import app as celery_app
+        insp = celery_app.control.inspect(timeout=2)
+        ping = insp.ping()
+        components["celery"] = "ok" if ping else "warn: no workers"
+    except Exception as e:
+        components["celery"] = f"error: {e.__class__.__name__}"
+
+    all_ok = all(v == "ok" for v in components.values())
+    status_code = 200 if all_ok else 503
+    return JsonResponse(
+        {"status": "ok" if all_ok else "degraded", "components": components},
+        status=status_code,
+    )
 
 
 urlpatterns = [

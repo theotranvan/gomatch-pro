@@ -10,6 +10,19 @@ load_dotenv()
 from datetime import timedelta
 
 import dj_database_url
+import sentry_sdk
+
+# --------------------------------------------------------------------------
+# Sentry — error tracking & performance monitoring
+# --------------------------------------------------------------------------
+
+sentry_sdk.init(
+    dsn=os.environ.get("SENTRY_DSN", ""),
+    traces_sample_rate=0.1,
+    profiles_sample_rate=0.1,
+    environment=os.environ.get("ENVIRONMENT", "development"),
+    send_default_pii=False,
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

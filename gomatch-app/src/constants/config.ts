@@ -14,4 +14,6 @@ export const Config = {
   WS_URL: wsUrl,
   STRIPE_PUBLISHABLE_KEY:
     (Constants.expoConfig?.extra?.stripePublishableKey as string) || "",
+  SENTRY_DSN:
+    (Constants.expoConfig?.extra?.sentryDsn as string) || "",
 } as const;

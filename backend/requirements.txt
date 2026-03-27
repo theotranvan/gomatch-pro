@@ -22,4 +22,5 @@ celery
 django-celery-beat
 django-debug-toolbar
 redis
+sentry-sdk
 supervisor
