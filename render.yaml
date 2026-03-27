@@ -4,6 +4,14 @@ databases:
     databaseName: gomatch_db
 
 services:
+  # Redis
+  - type: redis
+    name: gomatch-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  # Web (daphne ASGI)
   - type: web
     plan: free
     name: gomatch-api
@@ -11,12 +19,77 @@ services:
     region: frankfurt
     rootDir: backend
     buildCommand: "./build.sh"
-    startCommand: "gunicorn gomatch_api.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --timeout 120"
+    startCommand: "daphne -b 0.0.0.0 -p $PORT gomatch_api.asgi:application --verbosity 1"
+    healthCheckPath: /api/health/
+    numInstances: 2
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: gomatch-db
           property: connectionURI
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: gomatch-redis
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SETTINGS_MODULE
+        value: gomatch_api.settings
+      - key: RENDER
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+
+  # Celery worker
+  - type: worker
+    name: gomatch-worker
+    runtime: python
+    region: frankfurt
+    rootDir: backend
+    buildCommand: "./build.sh"
+    startCommand: "celery -A gomatch_api worker -l info --concurrency 4"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gomatch-db
+          property: connectionURI
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: gomatch-redis
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SETTINGS_MODULE
+        value: gomatch_api.settings
+      - key: RENDER
+        value: "true"
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+
+  # Celery beat scheduler
+  - type: worker
+    name: gomatch-beat
+    runtime: python
+    region: frankfurt
+    rootDir: backend
+    buildCommand: "./build.sh"
+    startCommand: "celery -A gomatch_api beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gomatch-db
+          property: connectionURI
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: gomatch-redis
+          property: connectionString
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: DJANGO_DEBUG

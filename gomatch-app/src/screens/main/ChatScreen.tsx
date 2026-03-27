@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AppState,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -9,11 +10,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { chatService } from "../../services/chat";
 import { useAuth } from "../../hooks/useAuth";
 import { Colors } from "../../constants/colors";
+import { Config } from "../../constants/config";
 import { FONT_SIZES } from "../../constants/theme";
 import { Avatar } from "../../components/Avatar";
 import { LoadingScreen } from "../../components/LoadingScreen";
@@ -22,8 +25,6 @@ import type { ChatMessage } from "../../types";
 import type { ChatStackParamList } from "../../navigation/ChatStack";
 
 type Props = NativeStackScreenProps<ChatStackParamList, "ChatRoom">;
-
-const POLL_INTERVAL = 5000;
 
 export function ChatScreen({ route, navigation }: Props) {
   const { roomId, roomName, participantsCount } = route.params;
@@ -40,6 +41,8 @@ export function ChatScreen({ route, navigation }: Props) {
 
   const flatListRef = useRef<FlatList>(null);
   const latestIdRef = useRef<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const retryRef = useRef(0);
 
   // Set header
   useEffect(() => {
@@ -81,29 +84,65 @@ export function ChatScreen({ route, navigation }: Props) {
 
   useEffect(() => { loadMessages(); }, [loadMessages]);
 
-  // Polling for new messages
+  // WebSocket connection (replaces polling)
   useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await chatService.getMessages(roomId, 1);
-        const sorted = res.results.sort(
-          (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-        );
-        if (sorted.length > 0) {
-          const newestId = sorted[sorted.length - 1].id;
-          if (newestId !== latestIdRef.current) {
-            latestIdRef.current = newestId;
-            setMessages(sorted);
-            setHasMore(res.next !== null);
-            await chatService.markAsRead(roomId);
-          }
+    let mounted = true;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
+
+    const connect = async () => {
+      const token = await AsyncStorage.getItem("access_token");
+      if (!token || !mounted) return;
+
+      const url = `${Config.WS_URL}/ws/chat/${roomId}/?token=${token}`;
+      const ws = new WebSocket(url);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        retryRef.current = 0;
+      };
+
+      ws.onmessage = (event: WebSocketMessageEvent) => {
+        try {
+          const msg: ChatMessage = JSON.parse(event.data);
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+          latestIdRef.current = msg.id;
+        } catch {
+          // ignore malformed frames
         }
-      } catch {
-        // silent
+      };
+
+      ws.onclose = () => {
+        wsRef.current = null;
+        if (!mounted) return;
+        const delay = Math.min(1000 * 2 ** retryRef.current, 30000);
+        retryRef.current += 1;
+        reconnectTimer = setTimeout(connect, delay);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    };
+
+    connect();
+
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active" && !wsRef.current) {
+        retryRef.current = 0;
+        connect();
       }
-    }, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    });
+
+    return () => {
+      mounted = false;
+      clearTimeout(reconnectTimer);
+      subscription.remove();
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
   }, [roomId]);
 
   // Load older messages (pagination)
@@ -127,16 +166,20 @@ export function ChatScreen({ route, navigation }: Props) {
     }
   }, [loadingMore, hasMore, page, roomId]);
 
-  // Send message
+  // Send message via WebSocket (REST fallback)
   const handleSend = useCallback(async () => {
     const text = inputText.trim();
     if (!text || sending) return;
     setSending(true);
     setInputText("");
     try {
-      const msg = await chatService.sendMessage(roomId, text);
-      setMessages((prev) => [...prev, msg]);
-      latestIdRef.current = msg.id;
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ content: text }));
+      } else {
+        const msg = await chatService.sendMessage(roomId, text);
+        setMessages((prev) => [...prev, msg]);
+        latestIdRef.current = msg.id;
+      }
     } catch {
       setInputText(text);
     } finally {

@@ -15,3 +15,10 @@ whitenoise
 stripe
 python-dotenv
 requests
+channels
+channels_redis
+daphne
+celery
+django-celery-beat
+redis
+supervisor

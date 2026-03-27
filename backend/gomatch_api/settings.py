@@ -34,6 +34,7 @@ else:
 # --------------------------------------------------------------------------
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -48,6 +49,8 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "cloudinary",
     "cloudinary_storage",
+    "channels",
+    "django_celery_beat",
     # Local apps
     "core",
     "accounts",
@@ -92,6 +95,20 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "gomatch_api.wsgi.application"
+ASGI_APPLICATION = "gomatch_api.asgi.application"
+
+# --------------------------------------------------------------------------
+# Channels (WebSocket)
+# --------------------------------------------------------------------------
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get("REDIS_URL", "redis://localhost:6379")],
+        },
+    }
+}
 
 
 # --------------------------------------------------------------------------
@@ -115,6 +132,8 @@ elif os.environ.get("DB_ENGINE", "sqlite") == "postgresql":
             "PASSWORD": os.environ.get("DB_PASSWORD", "postgres"),
             "HOST": os.environ.get("DB_HOST", "localhost"),
             "PORT": os.environ.get("DB_PORT", "5432"),
+            "CONN_MAX_AGE": 600,
+            "CONN_HEALTH_CHECKS": True,
         }
     }
 else:
@@ -124,6 +143,19 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+
+# --------------------------------------------------------------------------
+# Celery
+# --------------------------------------------------------------------------
+
+CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Europe/Zurich"
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 
 # --------------------------------------------------------------------------

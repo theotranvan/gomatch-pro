@@ -5,6 +5,7 @@ gomatch_api URL Configuration
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
+from django.db import connection
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -16,7 +17,14 @@ from scoring.urls import ranking_urlpatterns, stats_urlpatterns
 
 
 def health_check(request):
-    return JsonResponse({"status": "ok"})
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        db_ok = True
+    except Exception:
+        db_ok = False
+    status_code = 200 if db_ok else 503
+    return JsonResponse({"status": "ok" if db_ok else "error", "db": db_ok}, status=status_code)
 
 
 urlpatterns = [
