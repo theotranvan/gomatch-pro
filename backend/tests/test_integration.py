@@ -15,8 +15,11 @@ Full scenario:
  11. Verify Diana CANNOT confirm (anti-cheat: only non-submitter participants)
 """
 
+import time
 from datetime import date, timedelta
 
+from django.core.cache import cache
+from django.test.utils import override_settings
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.settings import api_settings
@@ -629,3 +632,74 @@ class ChatPermissionTest(APITestCase):
             format="json",
         )
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+
+# ---------------------------------------------------------------------------
+# Cache performance test
+# ---------------------------------------------------------------------------
+
+
+class RankingCacheTest(APITestCase):
+    """Verify that GET /api/rankings/?sport=tennis uses cache on 2nd call.
+
+    Checks:
+      1. First call → X-Cache: MISS (data fetched from DB)
+      2. Second call → X-Cache: HIT  (served from cache, no SQL)
+      3. Second call is significantly faster than the first
+    """
+
+    def setUp(self):
+        cache.clear()
+        anon = APIClient()
+        self.user_data = _register(anon, "cache_test@test.ch")
+        self.client = _auth_client(self.user_data["tokens"]["access"])
+        self.client.patch(
+            "/api/auth/profile/",
+            {
+                "first_name": "Cache",
+                "last_name": "Tester",
+                "level_tennis": SkillLevel.INTERMEDIATE,
+                "level_padel": SkillLevel.INTERMEDIATE,
+                "date_of_birth": "1998-01-01",
+            },
+            format="json",
+        )
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_ranking_cache_hit_no_sql_on_second_call(self):
+        """2nd GET /api/rankings/?sport=tennis is cached (HIT, 0 SQL queries)."""
+
+        url = "/api/rankings/?sport=tennis"
+
+        # --- First call: MISS (populates cache) ---
+        t1_start = time.perf_counter()
+        resp1 = self.client.get(url, format="json")
+        t1_duration = time.perf_counter() - t1_start
+
+        self.assertEqual(resp1.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp1["X-Cache"], "MISS")
+
+        # --- Second call: HIT (from cache, no ranking SQL) ---
+        # 1 query allowed: JWT auth user lookup (not a ranking query)
+        with self.assertNumQueries(1):
+            t2_start = time.perf_counter()
+            resp2 = self.client.get(url, format="json")
+            t2_duration = time.perf_counter() - t2_start
+
+        self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp2["X-Cache"], "HIT")
+
+        # Same data returned
+        self.assertEqual(resp1.data, resp2.data)
+
+        # Second call should be faster (at least 2x)
+        if t1_duration > 0:
+            speedup = t1_duration / t2_duration if t2_duration > 0 else float("inf")
+            self.assertGreater(
+                speedup,
+                2,
+                f"Expected cache speedup > 2x, got {speedup:.1f}x "
+                f"(1st={t1_duration*1000:.1f}ms, 2nd={t2_duration*1000:.1f}ms)",
+            )
